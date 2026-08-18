@@ -1,0 +1,138 @@
+{
+  "brand": "hubCSR",
+  "version": "Brandbook v1.0 - Julho 2026",
+  "positioning": "Infraestrutura de observabilidade institucional.",
+  "master_phrase": "O que sua empresa faz. O que consegue comprovar. O que pode decidir.",
+  "support_phrase": "Menos reconstrução. Mais leitura. Melhor decisão.",
+  "logo": {
+    "approved_versions": [
+      "Principal",
+      "Reversa",
+      "Monocromática"
+    ],
+    "clear_space": "Margem livre mínima = x, sendo x a altura do ponto de conexão.",
+    "minimum_size": {
+      "digital": "120 px",
+      "print": "24 mm"
+    },
+    "never": [
+      "Distorcer",
+      "Girar",
+      "Recolorir",
+      "Aplicar sombra",
+      "Usar em fundo sem contraste",
+      "Usar baixa opacidade"
+    ]
+  },
+  "colors": {
+    "core_gradient": {
+      "Green": "#2EA84D",
+      "Teal": "#10A39A",
+      "Cyan": "#029CE0",
+      "Blue": "#1976BD",
+      "Indigo": "#2F2E87"
+    },
+    "slate": {
+      "50": "#F8FAFC",
+      "100": "#F1F5F9",
+      "200": "#E2E8F0",
+      "300": "#CBD5E1",
+      "400": "#94A3B8",
+      "500": "#64748B",
+      "600": "#475569",
+      "700": "#334155",
+      "800": "#1E293B",
+      "900": "#0F172A"
+    },
+    "action_azure": {
+      "name": "azure-500",
+      "hex_approx": "#0E88CD",
+      "note": "O brandbook nomeia azure-500, mas não imprime o hexadecimal. Valor aproximado por amostragem visual."
+    },
+    "usage": "Neutros slate ocupam aproximadamente 90% da composição. O gradiente é raro e intencional. Azul-azure é a cor de ação."
+  },
+  "typography": {
+    "titles_highlights": "Sora",
+    "body_interface": "Poppins",
+    "data_ids_evidence": "JetBrains Mono",
+    "minimum_graphic_size": "12 pt",
+    "scale": {
+      "Display": "60",
+      "Título": "32",
+      "Lead": "20",
+      "Corpo": "16",
+      "Overline": "12",
+      "Mono": "13"
+    },
+    "case_rules": "Sentence case em tudo. Overlines em caixa alta com tracking largo."
+  },
+  "voice": {
+    "attributes": [
+      "Calma",
+      "Institucional",
+      "Sênior",
+      "Precisa"
+    ],
+    "avoid": [
+      "Hype",
+      "Exclamações",
+      "Emojis",
+      "Solução mágica",
+      "Linguagem de startup"
+    ],
+    "vocabulary": [
+      "continuidade",
+      "rastreabilidade",
+      "evidência",
+      "contexto",
+      "leitura",
+      "base contínua",
+      "fio temporal",
+      "comprovação",
+      "ciclo",
+      "frente",
+      "observável"
+    ]
+  },
+  "key_visual": {
+    "name": "O fio",
+    "meaning": [
+      "Continuidade",
+      "Rastreabilidade",
+      "Conexão"
+    ],
+    "rule": "O fio conecta itens dispersos a uma base organizada. Deve tangenciar blocos e áreas livres; nunca cruza uma frase."
+  },
+  "imagery": {
+    "use": [
+      "Pessoas reais em contexto de trabalho",
+      "Produto",
+      "Decisão",
+      "Operação",
+      "Tons frios",
+      "Luz neutra",
+      "Composição limpa"
+    ],
+    "avoid": [
+      "Banco de imagem genérico",
+      "Mãos dadas",
+      "Planeta",
+      "Cenas artificiais de equipe"
+    ]
+  },
+  "social": {
+    "feed": "4:5",
+    "stories_reels": "1080 x 1920 - 9:16",
+    "story_duration": "12-18 s",
+    "reel_structure": "Gancho -> tese -> CTA",
+    "do": [
+      "Texto grande",
+      "Poucos elementos",
+      "Movimento claro"
+    ],
+    "dont": [
+      "Legenda longa dentro da arte",
+      "Cards sobre a interface da plataforma"
+    ]
+  }
+}
