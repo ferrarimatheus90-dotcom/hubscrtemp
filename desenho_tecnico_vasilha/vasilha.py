@@ -4,14 +4,13 @@
 Folha A3 paisagem, 1º diedro (ABNT), escala 1:1:
   - vista frontal em meio corte (metade esquerda em vista, metade direita em corte)
   - vista superior
-  - detalhe A (aba / borda) 5:1 e detalhe B (fundo) 3:1
+  - detalhe A (aba / borda enrolada) 5:1 e detalhe B (fundo) 2:1
 
 Uso:
-    python3 vasilha.py                 # guia de medição (cotas em letras)
-    python3 vasilha.py medidas.json    # desenho final com os valores medidos
+    python3 vasilha.py medidas.json
 
-No JSON, qualquer cota ausente ou null continua aparecendo como letra (em vermelho)
-e a geometria usa o valor estimado pelas fotos.
+Cotas que não estiverem no JSON usam o valor estimado pelas fotos e saem no
+desenho marcadas com asterisco (*).
 """
 import json
 import math
@@ -22,34 +21,33 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Arc as MArc
 from matplotlib.patches import Circle as MCircle
 from matplotlib.patches import Polygon as MPoly
-from shapely.geometry import LineString, Point, Polygon, MultiPolygon
+from shapely.geometry import LineString, MultiPolygon, Point
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 
-# Cotas da peça (mm). Valores estimados a partir das fotos, usados só para a forma
-# do desenho enquanto a medida real não chega.
+# Cotas da peça (mm / graus). Estimativas tiradas das fotos, usadas quando a
+# medida com paquímetro não foi informada.
 ESTIMADAS = {
-    "A": 140.0,  # Ø externo total (borda da aba)
-    "B": 125.0,  # Ø interno da boca (onde a parede encontra a aba)
-    "C": 98.0,   # Ø externo do fundo (parede rente à mesa)
-    "D": 50.0,   # Ø do rebaixo central do fundo
-    "H": 48.0,   # altura total
-    "e": 0.6,    # espessura da chapa
-    "R1": 2.0,   # raio da dobra parede/aba
-    "R2": 8.0,   # raio externo do fundo (concordância parede/fundo)
-    "p": 1.0,    # profundidade do rebaixo central
-    "h": 3.0,    # altura da aba (do topo até a borda de baixo)
+    "A": 134.0,   # Ø externo total (borda enrolada)
+    "B": 109.0,   # Ø externo da parede no início da curva da aba
+    "C": 88.4,    # Ø externo do fundo (canto vivo virtual parede/fundo)
+    "D": 48.0,    # Ø do rebaixo central do fundo
+    "P": 48.2,    # profundidade interna (topo da borda até o centro do fundo)
+    "e": 0.5,     # espessura da chapa
+    "b": 1.6,     # espessura da borda enrolada
+    "R1": 6.0,    # raio da curva parede/aba (face externa)
+    "R2": 5.0,    # raio externo do fundo
+    "p": 1.0,     # altura do rebaixo central
+    "beta": 40.0, # inclinação da aba em relação à horizontal (graus)
 }
-OBRIGATORIAS = ["A", "B", "C", "D", "H", "e"]
 
 MM = 72.0 / 25.4            # pontos por mm
 GROSSA = 0.6 * MM           # linha de contorno visível
 FINA = 0.25 * MM            # cota, extensão, linha de centro
 TXT = 3.0                   # altura de texto das cotas (mm)
-VERMELHO = "#c00000"
-LARANJA = "#d07000"
 
 
 def fonte(h_mm):
@@ -86,65 +84,75 @@ def arco_canto(p_ant, p, p_prox, r, n=40):
     return pts, c
 
 
+def arco_horario(c, r, a_ini, a_fim, n=40):
+    return [c + r * np.array([math.cos(a), math.sin(a)]) for a in np.linspace(a_ini, a_fim, n)]
+
+
 class Perfil:
     """Perfil de revolução (metade direita, eixo em x = 0, mesa em y = 0).
 
-    `pele` é a face externa da chapa (fundo por baixo, parede por fora, aba por baixo);
+    `pele` é a face externa da chapa (fundo por baixo, parede e aba por fora);
     a chapa de espessura e fica à esquerda do sentido de percurso.
+    Incógnitas resolvidas numericamente: altura do início da curva da aba (yT)
+    e comprimento reto da aba (Lf), para fechar Ø A e a altura total.
     """
 
-    CURL = 0.9       # raio da borda enrolada (estimado)
-    VARREDURA = 160  # graus da borda enrolada
+    VARREDURA_BORDA = 230  # graus da borda enrolada
 
     def __init__(self, m):
         self.m = m
-        A, B, H, e, h = m["A"], m["B"], m["H"], m["e"], m["h"]
-        self.xE = A / 2 - self.CURL - e - 1
-        self.yfl = H - e
-        self.alfa = math.radians(5)
-        for _ in range(60):
+        self.H = m["P"] + m["p"] + m["e"]
+        self.yT = self.H - 10
+        self.Lf = 8.0
+        for _ in range(80):
             self._construir()
             xmax, ymax = self.banda.bounds[2], self.banda.bounds[3]
-            L = max(self.xE - self.Q1[0], 1.0)
-            self.xE += A / 2 - xmax
-            self.yfl += H - ymax
-            self.alfa += (self.y_borda - (H - h)) / L * 0.8
-            self.alfa = min(max(self.alfa, math.radians(-5)), math.radians(35))
+            self.Lf += (m["A"] / 2 - xmax) / math.cos(math.radians(m["beta"]))
+            self.yT += self.H - ymax
         self._construir()
 
     def _construir(self):
         m = self.m
         e, p = m["e"], m["p"]
+        beta = math.radians(m["beta"])
         rc = m["D"] / 2
         w = max(1.5 * p, 1.0)
         self.rc, self.w = rc, w
         P0, P1, P2 = (0.0, p), (rc - w, p), (rc, 0.0)
         Q0 = np.array([m["C"] / 2, 0.0])
-        Q1 = np.array([m["B"] / 2 + e, self.yfl])
-        E = np.array([self.xE, self.yfl - (self.xE - Q1[0]) * math.tan(self.alfa)])
-        self.Q0, self.Q1, self.E = Q0, Q1, E
-        arco0, self.c0 = arco_canto(P2, Q0, Q1, m["R2"])
-        arco1, self.c1 = arco_canto(Q0, Q1, E, m["R1"])
-        # borda enrolada para baixo (giro horário a partir do fim da aba)
-        a = self.alfa
-        cc = E + self.CURL * np.array([-math.sin(a), -math.cos(a)])
-        a0 = math.pi / 2 - a
-        enrolado = [cc + self.CURL * np.array([math.cos(a0 - t), math.sin(a0 - t)])
-                    for t in np.linspace(0, math.radians(self.VARREDURA), 40)]
-        self.cc = cc
-        self.arco0, self.arco1 = arco0, arco1
-        pts = [P0, P1, P2] + arco0 + arco1 + [E] + enrolado[1:]
+        T1 = np.array([m["B"] / 2, self.yT])
+        self.T1 = T1
+        uw = unit(T1 - Q0)
+        self.theta = math.atan2(uw[0], uw[1])  # inclinação da parede em relação à vertical
+        # concordância do fundo: canto virtual Q0 entre fundo e parede
+        arco0, self.c0 = arco_canto(P2, Q0, T1, m["R2"])
+        # curva da aba: começa tangente à parede em T1, gira no sentido horário até beta
+        c1 = T1 + m["R1"] * np.array([uw[1], -uw[0]])
+        a_ini = math.atan2(*(T1 - c1)[::-1])
+        a_fim = beta + math.pi / 2
+        arco1 = arco_horario(c1, m["R1"], a_ini, a_fim)
+        self.c1 = c1
+        F0 = arco1[-1]
+        d = np.array([math.cos(beta), math.sin(beta)])
+        E = F0 + d * self.Lf
+        self.F0, self.E = F0, E
+        # borda enrolada para fora/baixo, diâmetro externo b
+        rb = max(m["b"] / 2 - e, 0.05)
+        cb = E + rb * np.array([math.sin(beta), -math.cos(beta)])
+        a0 = beta + math.pi / 2
+        borda = arco_horario(cb, rb, a0, a0 - math.radians(self.VARREDURA_BORDA))
+        self.cb = cb
+        self.arco0 = arco0
+        pts = [P0, P1, P2] + arco0[:-1] + arco1 + [E] + borda[1:]
         self.pele = np.array(pts, float)
         linha = LineString(self.pele)
         self.banda = linha.buffer(e, single_sided=True, cap_style="flat", join_style="round")
-        self.interna = np.array(linha.offset_curve(e, join_style="round").coords)
-        # ponto mais baixo da borda (lado de fora da parede)
         ext = np.array(self.banda.exterior.coords)
-        mask = ext[:, 0] > Q1[0] + m["R1"] + 0.5
+        j = np.argmax(ext[:, 1])
+        self.x_topo = ext[j, 0]  # topo da borda (y = H)
+        mask = ext[:, 0] > m["A"] / 2 - m["b"] - 0.3
         i = np.argmin(np.where(mask, ext[:, 1], np.inf))
         self.y_borda, self.x_borda = ext[i, 1], ext[i, 0]
-        j = np.argmax(ext[:, 1])
-        self.x_topo = ext[j, 0]  # topo da dobra (y = H)
 
     def raio_max(self, y):
         """Maior raio da peça na altura y (silhueta da vista externa)."""
@@ -154,10 +162,9 @@ class Perfil:
         return corte.bounds[2]
 
     def silhueta(self, passo=0.02):
-        H = self.m["H"]
-        ys = np.arange(passo / 2, H, passo)
+        H = self.H
         pts = [(0.0, 0.0)]
-        for y in ys:
+        for y in np.arange(passo / 2, H, passo):
             r = self.raio_max(y)
             if r is not None:
                 pts.append((r, y))
@@ -165,9 +172,15 @@ class Perfil:
         pts.append((0.0, H))
         return np.array(pts)
 
-    def espessura_em_x(self, x):
-        corte = self.banda.intersection(LineString([(x, -5), (x, 300)]))
-        return corte.bounds[1], corte.bounds[3]
+    def corte_normal(self, ponto, n):
+        """Interseção da chapa com a reta por `ponto` na direção n -> (p_menor, p_maior)."""
+        ponto, n = np.asarray(ponto, float), unit(n)
+        seg = LineString([ponto - 5 * n, ponto + 5 * n])
+        g = self.banda.intersection(seg)
+        xy = np.array(g.coords) if g.geom_type == "LineString" else np.array(
+            [c for gg in g.geoms for c in gg.coords])
+        s = (xy - ponto) @ n
+        return ponto + n * s.min(), ponto + n * s.max()
 
 
 # --------------------------------------------------------------------------- folha
@@ -191,11 +204,6 @@ class Folha:
         dash = tuple(s * MM / FINA for s in seq)
         self.linha([p1, p2], lw=FINA, ls=(0, dash), z=2)
 
-    def circ_centro(self, c, r):
-        seq = [8, 1.5, 0.5, 1.5]
-        dash = tuple(s * MM / FINA for s in seq)
-        self.ax.add_patch(MCircle(c, r, fill=False, lw=FINA, ls=(0, dash), zorder=2))
-
     def circulo(self, c, r, lw=GROSSA, cor="k"):
         self.ax.add_patch(MCircle(c, r, fill=False, lw=lw, ec=cor, zorder=3))
 
@@ -213,16 +221,16 @@ class Folha:
         self.ax.add_patch(MPoly([ponta, base + n * larg / 2, base - n * larg / 2],
                                 closed=True, fc="k", ec="k", lw=0, zorder=5))
 
-    def preencher(self, geom, desloc, esc, cor="k"):
+    def preencher(self, geom, desloc, esc):
         polys = geom.geoms if isinstance(geom, MultiPolygon) else [geom]
         for g in polys:
             if g.is_empty:
                 continue
             xy = np.array(g.exterior.coords) * esc + desloc
-            self.ax.add_patch(MPoly(xy, closed=True, fc=cor, ec="k", lw=FINA, zorder=3))
+            self.ax.add_patch(MPoly(xy, closed=True, fc="k", ec="k", lw=FINA, zorder=3))
 
     # ---- cotas
-    def cota_h(self, xa, xb, ya, yb, yd, txt, cor="k", fora=False, folga=1.0):
+    def cota_h(self, xa, xb, ya, yb, yd, txt, fora=False, folga=1.0):
         for x, y in ((xa, ya), (xb, yb)):
             s = 1 if yd > y else -1
             self.linha([(x, y + s * folga), (x, yd + s * 2)], lw=FINA)
@@ -234,12 +242,14 @@ class Folha:
             self.linha([(xa, yd), (xb, yd)], lw=FINA)
             self.seta((xa, yd), (-1, 0))
             self.seta((xb, yd), (1, 0))
-        self.texto(((xa + xb) / 2, yd + 0.8), txt, cor=cor)
+        self.texto(((xa + xb) / 2, yd + 0.8), txt)
 
-    def cota_v(self, ya, yb, xa, xb, xd, txt, cor="k", fora=False, folga=1.0, txt_lado=-1):
-        for y, x in ((ya, xa), (yb, xb)):
-            s = 1 if xd > x else -1
-            self.linha([(x + s * folga, y), (xd + s * 2, y)], lw=FINA)
+    def cota_v(self, ya, yb, xa, xb, xd, txt, fora=False, folga=1.0, txt_lado=-1,
+               extensao=True):
+        if extensao:
+            for y, x in ((ya, xa), (yb, xb)):
+                s = 1 if xd > x else -1
+                self.linha([(x + s * folga, y), (xd + s * 2, y)], lw=FINA)
         if fora:
             self.linha([(xd, ya - 7), (xd, yb + 7)], lw=FINA)
             self.seta((xd, ya), (0, 1))
@@ -249,116 +259,127 @@ class Folha:
             self.seta((xd, ya), (0, -1))
             self.seta((xd, yb), (0, 1))
         ha = "right" if txt_lado < 0 else "left"
-        self.texto((xd + 0.8 * txt_lado, (ya + yb) / 2), txt, cor=cor,
+        self.texto((xd + 0.8 * txt_lado, (ya + yb) / 2), txt,
                    rotation=90, ha=ha, va="center")
 
-    def cota_meia(self, x_eixo, xb, yb, yd, txt, cor="k"):
+    def cota_meia(self, x_eixo, xb, yb, yd, txt):
         """Cota de diâmetro em meio corte: uma seta só, linha passa do eixo."""
         s = 1 if yd > yb else -1
         self.linha([(xb, yb + s * 1.0), (xb, yd + s * 2)], lw=FINA)
         self.linha([(x_eixo - 9, yd), (xb, yd)], lw=FINA)
         self.seta((xb, yd), (1, 0))
-        self.texto(((x_eixo + xb) / 2, yd + 0.8), txt, cor=cor)
+        self.texto(((x_eixo + xb) / 2, yd + 0.8), txt)
 
-    def cota_raio(self, c, R, ang, txt, cor="k", comp=9, de_fora=True, ombro=6):
-        """Cota de raio: seta tocando o arco, apontada para o centro (de fora)
-        ou saindo do centro (de dentro)."""
+    def cota_raio(self, c, R, ang, txt, comp=9, de_fora=True, ombro=7):
+        """Cota de raio: seta tocando o arco, vinda de fora (apontando para o
+        centro) ou saindo do centro."""
         u = np.array([math.cos(math.radians(ang)), math.sin(math.radians(ang))])
         c = np.asarray(c, float)
         p_arco = c + R * u
         if de_fora:
             p_fim = p_arco + comp * u
-            self.linha([p_arco, p_fim], lw=FINA)
             self.seta(p_arco, -u)
         else:
             p_fim = c - comp * u
-            self.linha([p_arco, p_fim], lw=FINA)
             self.seta(p_arco, u)
-        lado = 1 if p_fim[0] >= p_arco[0] else -1
-        p_ombro = p_fim + np.array([lado * ombro, 0])
+        self.linha([p_arco, p_fim], lw=FINA)
+        self.ombro(p_fim, txt, 1 if p_fim[0] >= p_arco[0] else -1, ombro)
+
+    def ombro(self, p_fim, txt, lado, comp=7):
+        p_ombro = p_fim + np.array([lado * comp, 0])
         self.linha([p_fim, p_ombro], lw=FINA)
-        self.texto(((p_fim[0] + p_ombro[0]) / 2, p_fim[1] + 0.8), txt, cor=cor)
+        self.texto(((p_fim[0] + p_ombro[0]) / 2, p_fim[1] + 0.8), txt)
+
+    def chamada(self, ponta, p_fim, txt, lado=1, comp=12):
+        """Linha de chamada com seta tocando a peça."""
+        ponta, p_fim = np.asarray(ponta, float), np.asarray(p_fim, float)
+        self.linha([ponta, p_fim], lw=FINA)
+        self.seta(ponta, ponta - p_fim)
+        self.ombro(p_fim, txt, lado, comp)
+
+    def cota_angulo(self, v, r, a0, a1, txt):
+        a0d, a1d = math.degrees(a0), math.degrees(a1)
+        self.ax.add_patch(MArc(v, 2 * r, 2 * r, theta1=a0d, theta2=a1d,
+                               lw=FINA, ec="k", zorder=4))
+        for a, s in ((a0, -1), (a1, 1)):
+            p = np.asarray(v) + r * np.array([math.cos(a), math.sin(a)])
+            tang = np.array([-math.sin(a), math.cos(a)]) * s
+            self.seta(p, tang, L=2.2, larg=0.8)
+        am = (a0 + a1) / 2
+        pt = np.asarray(v) + (r + 1.5) * np.array([math.cos(am), math.sin(am)])
+        self.texto(pt, txt, ha="left", va="center")
 
 
 # --------------------------------------------------------------------------- desenho
 
 def desenhar(medidas, saida_base):
-    m = {k: (medidas.get(k) if medidas.get(k) is not None else v) for k, v in ESTIMADAS.items()}
-    faltando = [k for k in ESTIMADAS if medidas.get(k) is None]
-    guia = bool(set(faltando) & set(OBRIGATORIAS))
+    m = {k: float(medidas[k]) if medidas.get(k) is not None else v for k, v in ESTIMADAS.items()}
+    estimadas = [k for k in ESTIMADAS if medidas.get(k) is None]
 
-    def rot(k, prefixo=""):
-        if k in faltando:
-            cor = VERMELHO if k in OBRIGATORIAS else LARANJA
-            return (k if k.startswith("R") else prefixo + k), cor
-        return prefixo + fmt(m[k]), "k"
+    def rot(k, prefixo="", sufixo=""):
+        return prefixo + fmt(m[k]) + sufixo + ("*" if k in estimadas else "")
 
     perf = Perfil(m)
-    A, B, C, D, H, e = (m[k] for k in "ABCDHe")
+    A, B, C, D, e = (m[k] for k in "ABCDe")
+    H = perf.H
     f = Folha()
 
-    # ---- margens e moldura (NBR 10068: esquerda 25, demais 10 para A3)
+    # ---- moldura (NBR 10068: margem esquerda 25, demais 10 para A3)
     f.linha([(25, 10), (410, 10), (410, 287), (25, 287), (25, 10)], lw=0.7 * MM)
 
     # ================= VISTA FRONTAL (meio corte) — escala 1:1
-    X0, Y0 = 125.0, 192.0
+    X0, Y0 = 125.0, 196.0
     o = np.array([X0, Y0])
 
-    sil = perf.silhueta()
-    sil_esq = sil * [-1, 1] + o
-    f.linha(sil_esq)
-    # aresta inferior da borda enrolada, à frente da parede
+    f.linha(perf.silhueta() * [-1, 1] + o)
+    # contorno inferior da borda enrolada, à frente da aba
     f.linha([(X0 - perf.x_borda, Y0 + perf.y_borda), (X0, Y0 + perf.y_borda)])
-
-    # metade em corte: chapa enegrecida
+    # metade em corte: chapa enegrecida + topo da borda ao fundo
     f.preencher(perf.banda, o, 1.0)
-    f.linha([(X0, Y0 + H), (X0 + perf.x_topo, Y0 + H)])  # topo da aba ao fundo
+    f.linha([(X0, Y0 + H), (X0 + perf.x_topo, Y0 + H)])
     f.centro((X0, Y0 - 6), (X0, Y0 + H + 6))
 
     # círculos indicadores dos detalhes
-    cA = np.array([(perf.Q1[0] + A / 2) / 2 + 0.5, H - 2.0])
-    rA = 8.5
+    cA = np.array([(perf.T1[0] + A / 2) / 2 + 0.3, (perf.T1[1] + H) / 2 + 0.3])
+    rA = 9.5
     f.circulo(o + cA, rA, lw=FINA)
     f.texto(o + cA + [rA * 0.75, rA * 0.75], "A", h=4, ha="left", va="bottom")
     cB = np.array([(perf.rc - perf.w + C / 2) / 2, 3.0])
-    rB = (C / 2 - perf.rc + perf.w) / 2 + 2.5
+    rB = (C / 2 - perf.rc + perf.w) / 2 + 1.5
     f.circulo(o + cB, rB, lw=FINA)
     f.texto(o + cB + [rB * 0.72, rB * 0.72], "B", h=4, ha="left", va="bottom")
 
-    # cotas — acima
-    txt, cor = rot("B", "Ø")
-    f.cota_h(X0 - B / 2, X0 + B / 2, Y0 + H, Y0 + H, Y0 + H + 10, txt, cor)
-    txt, cor = rot("A", "Ø")
-    yc = perf.cc[1]
-    f.cota_h(X0 - A / 2, X0 + A / 2, Y0 + yc, Y0 + yc, Y0 + H + 20, txt, cor)
-    # cotas — abaixo (Ø do fundo até o canto vivo virtual)
-    t_fundo = perf.arco0[0]
-    t_parede = perf.arco0[-1]
+    # Ø total (acima)
+    f.cota_h(X0 - A / 2, X0 + A / 2, Y0 + perf.cb[1], Y0 + perf.cb[1], Y0 + H + 10, rot("A", "Ø"))
+    # diâmetros abaixo: D (meia cota), C (canto vivo virtual), B (início da curva da aba)
+    f.cota_meia(X0, X0 + D / 2, Y0, Y0 - 15, rot("D", "Ø"))
+    t_fundo, t_parede = perf.arco0[0], perf.arco0[-1]
     for s in (-1, 1):
         f.linha([o + [s * t_fundo[0], 0], o + [s * C / 2, 0]], lw=FINA)
         f.linha([o + [s * t_parede[0], t_parede[1]], o + [s * C / 2, 0]], lw=FINA)
-    txt, cor = rot("C", "Ø")
-    f.cota_h(X0 - C / 2, X0 + C / 2, Y0, Y0, Y0 - rB + cB[1] - 4, txt, cor, folga=0.0)
-    txt, cor = rot("D", "Ø")
-    f.cota_meia(X0, X0 + D / 2, Y0, Y0 - rB + cB[1] - 13, txt, cor)
-    # altura
-    txt, cor = rot("H")
-    f.cota_v(Y0, Y0 + H, X0 - t_fundo[0], X0 - perf.x_topo, X0 - A / 2 - 10, txt, cor)
+    f.cota_h(X0 - C / 2, X0 + C / 2, Y0, Y0, Y0 - 23, rot("C", "Ø"), folga=0.0)
+    yT = perf.T1[1]
+    f.cota_h(X0 - B / 2, X0 + B / 2, Y0 + yT, Y0 + yT, Y0 - 31, rot("B", "Ø"))
+    # altura total (cota auxiliar) e profundidade interna (medida)
+    f.cota_v(Y0, Y0 + H, X0 - t_fundo[0], X0 - perf.x_topo, X0 - A / 2 - 10,
+             "(" + fmt(round(H, 1)) + ")")
+    f.cota_v(Y0 + m["p"] + e, Y0 + H, None, None, X0 + 12, rot("P"),
+             extensao=False, txt_lado=1)
 
     # ================= VISTA SUPERIOR — escala 1:1 (abaixo da frontal, 1º diedro)
-    Xs, Ys = X0, 85.0
+    Xs, Ys = X0, 83.0
     cs = (Xs, Ys)
-    f.circulo(cs, A / 2)                                  # borda externa
-    f.circulo(cs, perf.E[0], lw=FINA)                     # início da borda enrolada (tangência)
-    f.circulo(cs, B / 2)                                  # boca (dobra parede/aba)
-    r_fundo_int = perf.arco0[0][0]                        # tangência fundo/raio
-    f.circulo(cs, r_fundo_int, lw=FINA)
-    f.circulo(cs, perf.rc)                                # rebaixo central (aresta)
+    f.circulo(cs, A / 2)                                   # borda enrolada (externo)
+    f.circulo(cs, perf.E[0] - e, lw=FINA)                  # tangência aba/borda
+    f.circulo(cs, perf.F0[0] - e * math.sin(math.radians(m["beta"])), lw=FINA)  # aba/curva
+    f.circulo(cs, B / 2 - e, lw=FINA)                      # curva/parede
+    f.circulo(cs, perf.arco0[0][0], lw=FINA)               # parede/fundo
+    f.circulo(cs, perf.rc)                                 # rebaixo central (arestas)
     f.circulo(cs, perf.rc - perf.w)
     f.centro((Xs - A / 2 - 5, Ys), (Xs + A / 2 + 5, Ys))
     f.centro((Xs, Ys - A / 2 - 4), (Xs, Ys + A / 2 + 4))
 
-    # ================= DETALHE A — aba, escala 5:1
+    # ================= DETALHES
     def detalhe(cr, rr, esc, centro_folha, letra):
         clip = Point(cr).buffer(rr, 128)
         desloc = np.asarray(centro_folha) - np.asarray(cr) * esc
@@ -368,73 +389,72 @@ def desenhar(medidas, saida_base):
                 f"DETALHE {letra}  ESCALA {esc}:1", h=3.5, va="top")
         return lambda p: np.asarray(p, float) * esc + desloc
 
+    # ---- DETALHE A — aba, escala 5:1
     escA = 5
-    TA = detalhe(cA, rA, escA, (318.0, 236.0), "A")
-    # linha do topo da aba ao fundo (vista além do corte), recortada
-    x_ini = max(perf.x_topo, cA[0] - math.sqrt(max(rA**2 - (H - cA[1])**2, 0)))
-    x_fim = cA[0] + math.sqrt(max(rA**2 - (H - cA[1])**2, 0))
-    # e — espessura da aba
-    xm = (perf.Q1[0] + perf.m["R1"] + 1.0 + perf.E[0]) / 2
-    y_baixo, y_cima = perf.espessura_em_x(xm)
-    p1, p2 = TA((xm, y_baixo)), TA((xm, y_cima))
-    txt, cor = rot("e")
-    f.linha([p1 - [0, 9], p2 + [0, 9]], lw=FINA)
-    f.seta(p1, (0, 1))
-    f.seta(p2, (0, -1))
-    f.texto((p2[0] + 1.2, p2[1] + 4), txt, cor=cor, ha="left", va="center")
-    # h — altura da aba
-    txt, cor = rot("h")
-    ptop, pbor = TA((perf.x_topo, H)), TA((perf.x_borda, perf.y_borda))
-    f.cota_v(pbor[1], ptop[1], pbor[0], ptop[0], TA((A / 2, 0))[0] + 6, txt, cor,
-             fora=(ptop[1] - pbor[1]) < 9, txt_lado=1)
-    # R1 — dobra (face externa), cotada a partir do centro
-    txt, cor = rot("R1", "R")
-    f.cota_raio(TA(perf.c1), m["R1"] * escA, 150, txt, cor, comp=10, de_fora=False)
+    TA = detalhe(cA, rA, escA, (318.0, 230.0), "A")
+    beta = math.radians(m["beta"])
+    dflange = np.array([math.cos(beta), math.sin(beta)])
+    nflange = np.array([math.sin(beta), -math.cos(beta)])  # aponta para fora/baixo
+    # e — espessura da chapa, perpendicular à aba
+    pm = perf.F0 + dflange * perf.Lf * 0.55
+    p_dentro, p_fora = perf.corte_normal(pm, nflange)  # n aponta para fora da vasilha
+    s_dentro, s_fora = TA(p_dentro), TA(p_fora)
+    f.linha([s_fora + nflange * 9, s_dentro - nflange * 9], lw=FINA)
+    f.seta(s_fora, -nflange)
+    f.seta(s_dentro, nflange)
+    f.ombro(s_dentro - nflange * 9, rot("e"), -1, 9)
+    # ângulo da aba com a horizontal
+    v = perf.F0 + dflange * 0.4
+    sv = TA(v)
+    f.linha([sv, sv + [24, 0]], lw=FINA)
+    f.cota_angulo(sv, 18, 0.0, beta, rot("beta", sufixo="°"))
+    # R1 — curva da aba (face externa), cotada a partir do centro
+    a_mid = (math.atan2(*(perf.T1 - perf.c1)[::-1]) + beta + math.pi / 2) / 2
+    f.cota_raio(TA(perf.c1), m["R1"] * escA, math.degrees(a_mid), rot("R1", "R"),
+                comp=12, de_fora=False)
+    # borda enrolada
+    ponta = TA(perf.cb + (m["b"] / 2) * unit([0.25, 1.0]))
+    f.chamada(ponta, ponta + [10, 14], "BORDA ENROLADA " + rot("b", "Ø"), lado=1, comp=40)
 
-    # ================= DETALHE B — fundo, escala 3:1
+    # ---- DETALHE B — fundo, escala 2:1
     escB = 2
-    TB = detalhe(cB, rB, escB, (318.0, 145.0), "B")
-    # R2 — raio externo do fundo
-    txt, cor = rot("R2", "R")
-    f.cota_raio(TB(perf.c0), m["R2"] * escB, -40, txt, cor, comp=12)
-    # p — profundidade do rebaixo central
-    txt, cor = rot("p")
+    TB = detalhe(cB, rB, escB, (318.0, 142.0), "B")
+    f.cota_raio(TB(perf.c0), m["R2"] * escB, -40, rot("R2", "R"), comp=12)
     q_cima = TB((perf.rc - perf.w, m["p"]))
     q_baixo = TB((perf.rc, 0))
     xd = TB((perf.rc - perf.w - 3.0, 0))[0]
-    f.cota_v(q_baixo[1], q_cima[1], q_baixo[0], q_cima[0], xd, txt, cor,
+    f.cota_v(q_baixo[1], q_cima[1], q_baixo[0], q_cima[0], xd, rot("p"),
              fora=(q_cima[1] - q_baixo[1]) < 9)
 
     # ================= NOTAS
-    nx, ny = 236.0, 96.0
-    e_txt = fmt(e) if "e" not in faltando else "e"
+    nx, ny = 236.0, 104.0
     notas = [
         "NOTAS:",
-        "1. Cotas em milímetros.",
-        f"2. Peça estampada em chapa de aço inox, espessura {e_txt} mm (constante).",
-        "3. Cotas de Ø C até o canto vivo virtual (prolongamento parede/fundo).",
-        "4. Borda da aba enrolada para baixo. Tolerância geral: ±0,5 mm.",
+        "1. Cotas em milímetros. Tolerância geral ±0,5 mm.",
+        f"2. Peça estampada em chapa de aço inox, espessura {rot('e')} mm (constante).",
+        f"3. {rot('P')}: profundidade interna, do topo da borda ao centro do fundo.",
+        f"4. ({fmt(round(H, 1))}): altura total, cota auxiliar = profundidade + rebaixo + chapa.",
+        "5. Ø C até o canto vivo virtual (prolongamento da parede e do fundo).",
+        "* Cotas estimadas por foto — conferir com paquímetro.",
     ]
     for i, n in enumerate(notas):
-        f.texto((nx, ny - i * 5.2), n, h=2.6, ha="left", va="top",
+        f.texto((nx, ny - i * 5.0), n, h=2.4, ha="left", va="top",
                 weight="bold" if i == 0 else "normal")
 
-    # ================= LEGENDA (NBR 10582) 178 x 50 no canto inferior direito
-    lx0, lx1, ly0, ly1 = 232.0, 410.0, 10.0, 62.0
-    f.linha([(lx0, ly0), (lx0, ly1), (lx1, ly1)], lw=0.7 * MM)
-    linhas_y = [52.0, 42.0, 32.0, 21.0]
-    for y in linhas_y:
+    # ================= LEGENDA (NBR 10582) no canto inferior direito
+    lx0, lx1 = 232.0, 410.0
+    f.linha([(lx0, 10), (lx0, 62), (lx1, 62)], lw=0.7 * MM)
+    for y in (52.0, 42.0, 32.0, 21.0):
         f.linha([(lx0, y), (lx1, y)], lw=FINA)
 
-    def campo(x0, x1, y0, y1, rotulo, valor, h=3.2, cor="k", peso="normal"):
+    def campo(x0, x1, y0, y1, rotulo, valor, h=3.2, peso="normal"):
         if x0 > lx0:
             f.linha([(x0, y0), (x0, y1)], lw=FINA)
         f.texto((x0 + 1.2, y1 - 1.0), rotulo, h=1.6, ha="left", va="top", cor="#444")
-        f.texto(((x0 + x1) / 2, y0 + 1.6), valor, h=h, ha="center", va="bottom",
-                cor=cor, weight=peso)
+        f.texto(((x0 + x1) / 2, y0 + 1.6), valor, h=h, ha="center", va="bottom", weight=peso)
 
     campo(lx0, lx1, 52, 62, "TÍTULO", "VASILHA (TIGELA) EM AÇO INOX", h=4.2, peso="bold")
-    campo(lx0, 330, 42, 52, "MATERIAL", f"Aço inoxidável — chapa {e_txt} mm", h=3)
+    campo(lx0, 330, 42, 52, "MATERIAL", f"Aço inoxidável — chapa {rot('e')} mm", h=3)
     campo(330, lx1, 42, 52, "QUANTIDADE", "1", h=3)
     campo(lx0, 330, 32, 42, "DESENHISTA", "", h=3)
     campo(330, lx1, 32, 42, "DATA", "02/10/2026", h=3)
@@ -455,17 +475,11 @@ def desenhar(medidas, saida_base):
     f.centro((sx + 13.5, sy), (sx + 22.5, sy))
     f.texto((sx + 31, sy - 0.2), "1º", h=3.5, ha="center", va="center")
 
-    if guia:
-        f.texto((217.5, 291.5),
-                "GUIA DE MEDIÇÃO — letras em vermelho: medir com o paquímetro;"
-                " em laranja: opcionais (se não medir, uso estimativa das fotos)",
-                h=3.0, cor=VERMELHO, va="center", weight="bold")
-
     os.makedirs(os.path.dirname(saida_base), exist_ok=True)
     f.fig.savefig(saida_base + ".pdf")
     f.fig.savefig(saida_base + ".png", dpi=200)
     plt.close(f.fig)
-    return guia, faltando
+    return perf, estimadas
 
 
 def main():
@@ -473,12 +487,13 @@ def main():
     if len(sys.argv) > 1:
         with open(sys.argv[1], encoding="utf-8") as fh:
             medidas = json.load(fh)
-    guia = any(medidas.get(k) is None for k in OBRIGATORIAS)
-    nome = "vasilha_guia_medicao" if guia else "vasilha_desenho_tecnico"
-    guia, faltando = desenhar(medidas, os.path.join(AQUI, nome))
+    nome = "vasilha_desenho_tecnico"
+    perf, estimadas = desenhar(medidas, os.path.join(AQUI, nome))
     print(f"Gerado: {nome}.pdf / {nome}.png")
-    if faltando:
-        print("Cotas ainda sem medida (usando estimativa):", ", ".join(faltando))
+    print(f"Altura total {perf.H:.2f} | início da curva da aba a {perf.T1[1]:.2f} mm do chão"
+          f" | parede a {math.degrees(perf.theta):.1f}° da vertical | aba reta {perf.Lf:.2f} mm")
+    if estimadas:
+        print("Cotas estimadas (*):", ", ".join(estimadas))
 
 
 if __name__ == "__main__":
