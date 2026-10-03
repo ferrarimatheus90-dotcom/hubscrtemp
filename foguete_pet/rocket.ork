@@ -1,0 +1,471 @@
+<?xml version='1.0' encoding='utf-8'?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket>
+    <name>Colegio Igautemi 2</name>
+    <id>5a466ccf-7178-47ef-9bbd-cbe05002cb55</id>
+    <axialoffset method="absolute">0.0</axialoffset>
+    <position type="absolute">0.0</position>
+    <designtype>original</designtype>
+    <referencetype>maximum</referencetype>
+
+    <subcomponents>
+      <stage>
+        <name>Etapa</name>
+        <id>b5d62282-908c-41d7-ae2a-411852e0b060</id>
+
+        <subcomponents>
+          <nosecone>
+            <name>Ogiva</name>
+            <id>cbbbf27e-5351-481a-9ad9-4c611a965295</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1250.0" group="Plastics">PLA - 100% infill</material>
+            <length>0.17500000000000002</length>
+            <thickness>0.001</thickness>
+            <shape>ogive</shape>
+            <shapeparameter>1.0</shapeparameter>
+            <aftradius>0.0475</aftradius>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+            <isflipped>false</isflipped>
+
+            <subcomponents>
+              <masscomponent>
+                <name>Componente de massa</name>
+                <id>3f265429-2e99-4034-9c08-e18086d01111</id>
+                <axialoffset method="top">0.01</axialoffset>
+                <position type="top">0.01</position>
+                <packedlength>0.025000000000000005</packedlength>
+                <packedradius>0.0125</packedradius>
+                <radialposition>0.0</radialposition>
+                <radialdirection>0.0</radialdirection>
+                <mass>0.025</mass>
+                <masscomponenttype>masscomponent</masscomponenttype>
+              </masscomponent>
+            </subcomponents>
+          </nosecone>
+        </subcomponents>
+      </stage>
+
+      <stage>
+        <name>Sustentador</name>
+        <id>594e57ab-aa4d-4f49-9528-bde85561f694</id>
+        <separationevent>ejection</separationevent>
+        <separationaltitude>200.0</separationaltitude>
+        <separationdelay>0.0</separationdelay>
+
+        <subcomponents>
+          <transition>
+            <name>Transição 2</name>
+            <id>b28719dc-0e93-4ebb-997b-bb89df54fc79</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.04</length>
+            <thickness>0.001</thickness>
+            <shape>ogive</shape>
+            <shapeparameter>1.0</shapeparameter>
+            <foreradius>auto 0.0475</foreradius>
+            <aftradius>0.0425</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+
+            <subcomponents>
+              <masscomponent>
+                <name>Componente de massa</name>
+                <id>1c1adc12-3a51-4302-ae42-5a8581ef0281</id>
+                <axialoffset method="top">-0.02</axialoffset>
+                <position type="top">-0.02</position>
+                <packedlength>0.045</packedlength>
+                <packedradius>0.0475</packedradius>
+                <radialposition>0.0</radialposition>
+                <radialdirection>0.0</radialdirection>
+                <mass>0.028</mass>
+                <masscomponenttype>masscomponent</masscomponenttype>
+              </masscomponent>
+            </subcomponents>
+          </transition>
+
+          <transition>
+            <name>Transição 3</name>
+            <id>60a67cad-0b17-4ace-b72c-a84db53a0704</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.07</length>
+            <thickness>0.001</thickness>
+            <shape>parabolic</shape>
+            <shapeparameter>0.7000000000000001</shapeparameter>
+            <foreradius>auto 0.0425</foreradius>
+            <aftradius>0.047</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 4</name>
+            <id>0423cd74-cbcf-4af9-9854-5bb0b235bfae</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.0010199999999999999</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.047</foreradius>
+            <aftradius>0.04650000000000001</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <bodytube>
+            <name>Tubo do corpo 1</name>
+            <id>897a8454-5336-47ee-ba26-d48fb8febda4</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.07</length>
+            <thickness>0.0010199999999999999</thickness>
+            <radius>auto 0.04650000000000001</radius>
+          </bodytube>
+
+          <transition>
+            <name>Transição 5</name>
+            <id>04261e31-79ec-450e-9c00-cb1de932f26e</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.0010199999999999999</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.04650000000000001</foreradius>
+            <aftradius>0.047</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 6</name>
+            <id>b92919a0-00bf-41e1-8363-f22c9ffb1daf</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.09699999999999999</length>
+            <thickness>0.001</thickness>
+            <shape>power</shape>
+            <shapeclipped>true</shapeclipped>
+            <shapeparameter>0.7000000000000001</shapeparameter>
+            <foreradius>auto 0.047</foreradius>
+            <aftradius>0.01375</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+
+            <subcomponents>
+              <freeformfinset>
+                <name>Conjunto de aletas de formato livre</name>
+                <id>5edb75b0-7199-4993-866c-9eb05581701b</id>
+                <instancecount>4</instancecount>
+                <fincount>4</fincount>
+                <radiusoffset method="surface">0.0</radiusoffset>
+                <angleoffset method="relative">0.0</angleoffset>
+                <rotation>0.0</rotation>
+                <axialoffset method="bottom">-0.017269554538295075</axialoffset>
+                <position type="bottom">-0.017269554538295075</position>
+                <finish>normal</finish>
+                <material type="bulk" density="1250.0" group="Plastics">PLA - 100% infill</material>
+                <thickness>0.0014000000000000002</thickness>
+                <crosssection>rounded</crosssection>
+                <cant>0.0</cant>
+                <filletradius>0.0</filletradius>
+                <filletmaterial type="bulk" density="1250.0" group="Plastics">PLA - 100% infill</filletmaterial>
+                <finpoints>
+                  <point x="0.0" y="0.0"/>
+                  <point x="0.01899723929335322" y="0.023271618134357692"/>
+                  <point x="0.034432496219202705" y="0.04250632291887783"/>
+                  <point x="0.06150356221223104" y="0.046068305286381554"/>
+                  <point x="0.08548757682008948" y="0.04915535667155145"/>
+                  <point x="0.10282255767527429" y="0.051292546092053685"/>
+                  <point x="0.11284221009922452" y="0.05211681456129132"/>
+                  <point x="0.10584421538546493" y="0.03919286911169101"/>
+                  <point x="0.10185452212259818" y="0.030744106907973186"/>
+                  <point x="0.10021170724965306" y="0.027927852840067244"/>
+                  <point x="0.0969260775037628" y="0.021825969026271038"/>
+                  <point x="0.09387513559686468" y="0.01525470953449051"/>
+                  <point x="0.08887778197505931" y="0.006049273118721314"/>
+                  <point x="0.08192559445258575" y="-0.008311292190842033"/>
+                  <point x="0.07378623289247113" y="-0.02415673311116124"/>
+                </finpoints>
+              </freeformfinset>
+
+              <masscomponent>
+                <name>Componente de massa</name>
+                <id>c165b927-89a9-4155-88b1-9ebc5e8992d1</id>
+                <axialoffset method="top">0.0</axialoffset>
+                <position type="top">0.0</position>
+                <packedlength>0.085</packedlength>
+                <packedradius>0.0325</packedradius>
+                <radialposition>0.0</radialposition>
+                <radialdirection>0.0</radialdirection>
+                <mass>0.007</mass>
+                <masscomponenttype>masscomponent</masscomponenttype>
+              </masscomponent>
+            </subcomponents>
+          </transition>
+
+          <bodytube>
+            <name>Tubo do corpo 2</name>
+            <id>0190f813-e01f-40d9-87ce-f9d32e0abc93</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.008</length>
+            <thickness>0.001</thickness>
+            <radius>auto 0.01375</radius>
+          </bodytube>
+
+          <transition>
+            <name>Transição 7</name>
+            <id>26fd3879-9d32-4115-9e77-2d7d4d356df6</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.002</length>
+            <thickness>0.0032500000000000003</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.01375</foreradius>
+            <aftradius>0.02</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 8</name>
+            <id>b7e828c3-edb2-42d8-be01-1c6deac12b88</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.0032500000000000003</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.02</foreradius>
+            <aftradius>0.01325</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <bodytube>
+            <name>Tubo do corpo 3</name>
+            <id>ead26932-0053-44fd-9958-f5053a1bfcba</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.005</length>
+            <thickness>0.0022499999999999985</thickness>
+            <radius>0.01325</radius>
+          </bodytube>
+
+          <transition>
+            <name>Transição 9</name>
+            <id>1790b4d3-3824-4fbf-86c1-c65fbfbe3586</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.003</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.01325</foreradius>
+            <aftradius>0.013999999999999999</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <bodytube>
+            <name>Tubo do corpo 4</name>
+            <id>c996a246-41f6-45ed-9bf1-64ce564946a6</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.005</length>
+            <thickness>0.0029999999999999975</thickness>
+            <radius>auto 0.013999999999999999</radius>
+          </bodytube>
+
+          <transition>
+            <name>Transição 10</name>
+            <id>e0b08b77-7f80-4f90-b575-25bb30e7ebbb</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.002</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.013999999999999999</foreradius>
+            <aftradius>0.01325</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 11</name>
+            <id>a6972655-33c8-4d18-b995-cf6310dfb562</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.003</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.01325</foreradius>
+            <aftradius>0.013999999999999999</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 12</name>
+            <id>39f5c73f-e6b3-4350-9a1e-20de7378da74</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.002</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.013999999999999999</foreradius>
+            <aftradius>0.01325</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 13</name>
+            <id>b435e64d-661a-41b4-aa6b-197ae8f8e109</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.003</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.01325</foreradius>
+            <aftradius>0.013999999999999999</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <transition>
+            <name>Transição 14</name>
+            <id>79cf19ba-fa0d-42ef-901b-5ae4eb3389cf</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.001</length>
+            <thickness>0.002</thickness>
+            <shape>conical</shape>
+            <foreradius>auto 0.013999999999999999</foreradius>
+            <aftradius>0.01325</aftradius>
+            <foreshoulderradius>0.0</foreshoulderradius>
+            <foreshoulderlength>0.0</foreshoulderlength>
+            <foreshoulderthickness>0.0</foreshoulderthickness>
+            <foreshouldercapped>false</foreshouldercapped>
+            <aftshoulderradius>0.0</aftshoulderradius>
+            <aftshoulderlength>0.0</aftshoulderlength>
+            <aftshoulderthickness>0.0</aftshoulderthickness>
+            <aftshouldercapped>false</aftshouldercapped>
+          </transition>
+
+          <bodytube>
+            <name>Tubo do corpo 5</name>
+            <id>8c358c70-22ef-4ddf-919a-b11304b6f7a2</id>
+            <finish>normal</finish>
+            <material type="bulk" density="1400.0" group="Custom">PET</material>
+            <length>0.003</length>
+            <thickness>0.0022499999999999985</thickness>
+            <radius>auto 0.01325</radius>
+          </bodytube>
+        </subcomponents>
+      </stage>
+
+      <stage>
+        <name>Etapa</name>
+        <id>14250633-7181-4e13-80a9-3d701b16fa66</id>
+        <separationevent>ejection</separationevent>
+        <separationaltitude>200.0</separationaltitude>
+        <separationdelay>0.0</separationdelay>
+      </stage>
+
+      <stage>
+        <name>Etapa</name>
+        <id>eb0ba035-22e8-4da5-b0c2-cc807974e91d</id>
+        <separationevent>ejection</separationevent>
+        <separationaltitude>200.0</separationaltitude>
+        <separationdelay>0.0</separationdelay>
+      </stage>
+    </subcomponents>
+  </rocket>
+
+  <simulations>
+  </simulations>
+  <photostudio>
+  </photostudio>
+  <docprefs>
+    <docmaterials>
+      <material>BULK|PET|1400.0|Custom</material>
+      <material>BULK|Peso Reak|1100.0|Custom</material>
+      <material>BULK|Polyethylene, HIPS, bulk|338.1295378915359|Custom</material>
+      <material>BULK|Polystyrene, cast, bulk|557.8916261064919|Custom</material>
+    </docmaterials>
+  </docprefs>
+</openrocket>
