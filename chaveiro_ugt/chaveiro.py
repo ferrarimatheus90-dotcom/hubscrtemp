@@ -7,7 +7,7 @@ Gera:
   chaveiro_previa.png  frente e verso
 
 Frente (topo): símbolo e nome em vermelho + UGT em branco, em alto-relevo.
-Verso (face na mesa): QR Code branco embutido rente à face.
+Verso (face na mesa): QR Code em branco direto sobre o preto, embutido rente à face.
 
 Uso: python3 chaveiro.py [--qr "https://..."]
 """
@@ -42,9 +42,8 @@ RELEVO = 0.8          # altura do relevo da frente
 INCRUSTE = 0.6        # profundidade do QR no verso (rente à face, 3 camadas de 0,2)
 FURO = 4.5            # furo da argola
 ORELHA_R = 5.5        # raio da orelha do furo
-QR_LADO = 33.0        # lado do quadrado branco do QR (inclui margem)
-QR_MARGEM = 2         # módulos de margem branca em volta do QR
-QR_PADRAO = "https://www.ugt.org.br"
+QR_LADO = 32.0        # lado do QR (só os módulos; a margem é o preto da base em volta)
+QR_PADRAO = "https://www.ugt.org.br/"
 
 CORES = {  # nome, cor de exibição (sRGB)
     "preto": ("Preto (base)", "#1E1E1E"),
@@ -115,27 +114,28 @@ def frente():
 
 
 def verso_qr(conteudo):
-    """Quadrado branco do QR (módulos claros + margem) como CrossSection do manifold.
+    """Módulos do QR em branco direto sobre a base preta (como na arte do cliente).
 
-    Feito direto no manifold (Clipper) porque módulos que se tocam só pela quina
-    quebram a triangulação do shapely/trimesh. Já sai espelhado em x: a face de
-    baixo é vista virada, e assim o código lê certo com a argola para cima.
+    É o QR "invertido": os módulos que num QR comum seriam pretos saem brancos,
+    e o preto da base faz o fundo e a margem. Feito no manifold (Clipper) porque
+    módulos que se tocam só pela quina quebram a triangulação do shapely/trimesh.
+    Já sai espelhado em x: a face de baixo é vista virada, e assim o código lê
+    certo com a argola para cima.
     """
     qr = segno.make(conteudo, error="m", micro=False)
     M = np.array([list(r) for r in qr.matrix], dtype=bool)
     n = M.shape[0]
-    mod = QR_LADO / (n + 2 * QR_MARGEM)
+    mod = QR_LADO / n
     x0 = y0 = -QR_LADO / 2
-    escuros = []
+    modulos = []
     for i in range(n):
         for j in range(n):
             if M[i, j]:
-                x = x0 + (j + QR_MARGEM) * mod
-                y = y0 + QR_LADO - (i + QR_MARGEM + 1) * mod
-                escuros.append(CrossSection.square((mod, mod)).translate((-x - mod, y)))
+                x = x0 + j * mod
+                y = y0 + QR_LADO - (i + 1) * mod
+                modulos.append(CrossSection.square((mod, mod)).translate((-x - mod, y)))
     # 0,01 mm de sobra: módulos encostados só pela quina viram uma peça só
-    escuro = CrossSection.batch_boolean(escuros, OpType.Add).offset(0.005, JoinType.Miter)
-    branco = CrossSection.square((QR_LADO, QR_LADO)).translate((x0, y0)) - escuro
+    branco = CrossSection.batch_boolean(modulos, OpType.Add).offset(0.005, JoinType.Miter)
     return branco, qr.version, n, mod
 
 
