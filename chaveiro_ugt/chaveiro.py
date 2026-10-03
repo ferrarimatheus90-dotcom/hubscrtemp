@@ -2,16 +2,18 @@
 """Chaveiro UGT em 3 cores para impressão 3D (FDM multicolor).
 
 Gera:
-  chaveiro_ugt.3mf          um objeto com 3 partes (preto / vermelho / branco) e cores
-  chaveiro_base_preta.stl   } as mesmas partes em STL separados, alinhados,
-  chaveiro_vermelho.stl     } para slicers que não leem cor do 3MF
-  chaveiro_branco.stl       }
-  chaveiro_previa.png       frente e verso
+  chaveiro_ugt.3mf     projeto Bambu Studio/OrcaSlicer: uma peça com 3 partes, cada uma
+                       já no seu filamento do AMS (1 preto, 2 vermelho, 3 branco)
+  chaveiro_previa.png  frente e verso
+
+Frente (topo): símbolo e nome em vermelho + UGT em branco, em alto-relevo.
+Verso (face na mesa): QR Code branco embutido rente à face.
 
 Uso: python3 chaveiro.py [--qr "https://..."]
 """
 import argparse
 import os
+import uuid
 import zipfile
 from xml.sax.saxutils import escape
 
@@ -181,47 +183,96 @@ def montar(conteudo_qr):
                         versao=versao, n=n, mod=mod)
 
 
+FILAMENTO = {"preto": 1, "vermelho": 2, "branco": 3}   # slot do AMS de cada parte
+MESA_CENTRO = (128.0, 128.0)                            # centro da mesa 256 x 256 (cabe na A1 mini)
+
+
+def _uuid(*chave):
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, "chaveiro-ugt/" + "/".join(map(str, chave))))
+
+
 def salvar_3mf(caminho, partes, nome_obj="Chaveiro UGT"):
-    """3MF núcleo: materiais base com cor + um objeto montado por componentes (1 por cor)."""
-    ids = {}
-    obj_xml = []
-    nid = 2
-    mats = list(partes)
-    for idx, nome in enumerate(mats):
+    """3MF no formato de projeto do Bambu Studio / OrcaSlicer.
+
+    Um único objeto com uma parte por cor; cada parte já sai com o filamento
+    (slot do AMS) definido em Metadata/model_settings.config. As configurações
+    de impressora/filamento não vão no arquivo: valem as que estiverem abertas.
+    """
+    nomes = list(partes)
+    tudo = trimesh.util.concatenate([partes[n] for n in nomes])
+    lo, hi = tudo.bounds
+    centro = np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2])
+    meia_altura = (hi[2] - lo[2]) / 2
+    ns = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+          'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
+          'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" '
+          'requiredextensions="p"')
+    cab = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    ident = "1 0 0 0 1 0 0 0 1 0 0 0"
+    obj_id = len(nomes) + 1
+
+    sub = []
+    for i, nome in enumerate(nomes, 1):
         m = partes[nome]
-        ids[nome] = nid
-        vs = "".join(f'<vertex x="{v[0]:.4f}" y="{v[1]:.4f}" z="{v[2]:.4f}"/>' for v in m.vertices)
+        v = m.vertices - centro
+        vs = "".join(f'<vertex x="{a:.4f}" y="{b:.4f}" z="{c:.4f}"/>' for a, b, c in v)
         ts = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
-        obj_xml.append(
-            f'<object id="{nid}" name="{escape(CORES[nome][0])}" type="model" pid="1" pindex="{idx}">'
-            f"<mesh><vertices>{vs}</vertices><triangles>{ts}</triangles></mesh></object>")
-        nid += 1
-    comp = "".join(f'<component objectid="{ids[n]}"/>' for n in mats)
-    obj_xml.append(f'<object id="{nid}" name="{escape(nome_obj)}" type="model"><components>{comp}'
-                   f"</components></object>")
-    base_mats = "".join(f'<base name="{escape(CORES[n][0])}" displaycolor="{CORES[n][1]}FF"/>'
-                        for n in mats)
-    modelo = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<model unit="millimeter" xml:lang="pt-BR" '
-        'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-        f'<metadata name="Title">{escape(nome_obj)}</metadata>'
-        '<metadata name="Designer">gerado por chaveiro.py</metadata>'
-        f'<resources><basematerials id="1">{base_mats}</basematerials>{"".join(obj_xml)}</resources>'
-        f'<build><item objectid="{nid}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></build></model>')
-    tipos = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-             '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        sub.append(f'<object id="{i}" p:UUID="{_uuid("parte", i)}" type="model">'
+                   f"<mesh><vertices>{vs}</vertices><triangles>{ts}</triangles></mesh></object>")
+    objetos = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
+               '<metadata name="BambuStudio:3mfVersion">1</metadata>'
+               f'<resources>{"".join(sub)}</resources><build/></model>')
+
+    comps = "".join(f'<component p:path="/3D/Objects/object_1.model" objectid="{i}" '
+                    f'p:UUID="{_uuid("comp", i)}" transform="{ident}"/>'
+                    for i in range(1, len(nomes) + 1))
+    pos = f"1 0 0 0 1 0 0 0 1 {MESA_CENTRO[0]} {MESA_CENTRO[1]} {meia_altura:.4f}"
+    raiz = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
+            '<metadata name="Application">BambuStudio-01.09.00.70</metadata>'
+            '<metadata name="BambuStudio:3mfVersion">1</metadata>'
+            f'<metadata name="Title">{escape(nome_obj)}</metadata>'
+            '<metadata name="Designer">gerado por chaveiro.py</metadata>'
+            f'<resources><object id="{obj_id}" p:UUID="{_uuid("objeto")}" type="model">'
+            f"<components>{comps}</components></object></resources>"
+            f'<build p:UUID="{_uuid("build")}"><item objectid="{obj_id}" p:UUID="{_uuid("item")}" '
+            f'transform="{pos}" printable="1"/></build></model>')
+
+    partes_cfg = "".join(
+        f'<part id="{i}" subtype="normal_part">'
+        f'<metadata key="name" value="{escape(CORES[n][0])}"/>'
+        '<metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>'
+        f'<metadata key="extruder" value="{FILAMENTO[n]}"/>'
+        '<mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" '
+        'facets_reversed="0" backwards_edges="0"/></part>'
+        for i, n in enumerate(nomes, 1))
+    config = (f'{cab}<config><object id="{obj_id}">'
+              f'<metadata key="name" value="{escape(nome_obj)}"/>'
+              f'<metadata key="extruder" value="{FILAMENTO[nomes[0]]}"/>{partes_cfg}</object>'
+              '<plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value=""/>'
+              '<metadata key="locked" value="false"/><model_instance>'
+              f'<metadata key="object_id" value="{obj_id}"/><metadata key="instance_id" value="0"/>'
+              '<metadata key="identify_id" value="1"/></model_instance></plate>'
+              f'<assemble><assemble_item object_id="{obj_id}" instance_id="0" transform="{pos}" '
+              'offset="0 0 0"/></assemble></config>')
+
+    tipos = (f'{cab}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
              '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
              '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
+             '<Default Extension="config" ContentType="text/xml"/>'
              "</Types>")
-    rels = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
-            'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+    rel_tipo = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
+    rels = (f'{cab}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f'<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="{rel_tipo}"/></Relationships>')
+    rels_modelo = (f'{cab}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                   f'<Relationship Target="/3D/Objects/object_1.model" Id="rel-1" Type="{rel_tipo}"/>'
+                   "</Relationships>")
     with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", tipos)
         z.writestr("_rels/.rels", rels)
-        z.writestr("3D/3dmodel.model", modelo)
+        z.writestr("3D/3dmodel.model", raiz)
+        z.writestr("3D/_rels/3dmodel.model.rels", rels_modelo)
+        z.writestr("3D/Objects/object_1.model", objetos)
+        z.writestr("Metadata/model_settings.config", config)
 
 
 # --------------------------------------------------------------------------- prévia
@@ -272,10 +323,6 @@ def main():
     for nome, m in partes.items():
         assert m.is_watertight, f"{nome} não está fechado"
     salvar_3mf(os.path.join(AQUI, "chaveiro_ugt.3mf"), partes)
-    arquivos = {"preto": "chaveiro_base_preta.stl", "vermelho": "chaveiro_vermelho.stl",
-                "branco": "chaveiro_branco.stl"}
-    for nome, arq in arquivos.items():
-        partes[nome].export(os.path.join(AQUI, arq))
     previa(geo, os.path.join(AQUI, "chaveiro_previa.png"), args.qr)
 
     print(f"QR: versão {geo['versao']} ({geo['n']}×{geo['n']} módulos de {geo['mod']:.2f} mm) -> {args.qr}")
