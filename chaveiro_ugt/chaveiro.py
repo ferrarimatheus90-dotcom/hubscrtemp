@@ -69,11 +69,6 @@ def texto(s, altura_maiuscula):
     return affinity.scale(g, k, k, origin=(0, 0))
 
 
-def centralizar_x(g, y_topo_maiusc, altura_maiuscula):
-    b = g.bounds
-    return affinity.translate(g, -(b[0] + b[2]) / 2, y_topo_maiusc - altura_maiuscula)
-
-
 def contorno():
     R = DIAMETRO / 2
     yc = R - 0.2
@@ -83,34 +78,39 @@ def contorno():
     return corpo.difference(furo), furo
 
 
+# Símbolo e textos medidos na arte do cliente (círculos ajustados ao contorno
+# traçado da imagem; erro máx. ~0,3 mm). Coordenadas em mm, centro do disco = (0, 0).
+SIMBOLO_EXTERNO = ((0.0, 4.6), 17.3)    # borda externa do arco
+SIMBOLO_INTERNO = ((-3.85, 4.6), 9.9)   # abertura (deslocada à esquerda: perna esq. fina)
+SIMBOLO_MORDIDA = ((-4.1, 20.5), 4.0)   # recorte no topo, alinhado com a abertura
+SIMBOLO_BASE = 6.05                     # base reta das duas pernas
+CAIXA_UGT = (-17.5, 17.5, -5.3, 4.35)   # x0, x1, y0, y1
+CAIXA_LINHA1 = (-17.2, 17.2, -10.45, -7.4)   # inclui o til do Ã
+CAIXA_LINHA2 = (-15.6, 15.6, -14.3, -11.9)
+ENGROSSAR_TEXTO = 0.06                  # mm por lado no texto pequeno (traço ≥ ~0,5 mm)
+
+
+def encaixar(g, caixa):
+    """Escala (não uniforme) e move g para ocupar exatamente a caixa (x0, x1, y0, y1)."""
+    x0, x1, y0, y1 = caixa
+    b = g.bounds
+    g = affinity.scale(g, (x1 - x0) / (b[2] - b[0]), (y1 - y0) / (b[3] - b[1]), origin=(b[0], b[1]))
+    return affinity.translate(g, x0 - b[0], y0 - b[1])
+
+
 def frente():
     """Relevo da frente: (vermelho, branco)."""
-    # símbolo: arco (meia coroa) com o recorte no topo
-    yc, Ro, Ri = 4.7, 17.3, 7.9
-    arco = Point(0, yc).buffer(Ro, 256).difference(Point(0, yc).buffer(Ri, 256))
-    arco = arco.intersection(box(-Ro - 1, yc, Ro + 1, yc + Ro + 1))
-    arco = arco.difference(Point(0, yc + Ro).buffer(2.2, 64))
-    # UGT
-    ugt = centralizar_x(texto("UGT", 9.2), 2.9, 9.2)
-    larg = ugt.bounds[2] - ugt.bounds[0]
-    if larg > 36.5:
-        k = 36.5 / larg
-        ugt = affinity.scale(ugt, k, 1.0, origin=(0, 0))
-    # nome por extenso, duas linhas
-    l1 = texto("UNIÃO GERAL DOS", 3.0)
-    l2 = texto("TRABALHADORES", 3.0)
-    alvo = 31.5
-    for i, l in enumerate((l1, l2)):
-        k = alvo / (l.bounds[2] - l.bounds[0])
-        k = min(k, 1.15)
-        l = affinity.scale(l, k, k, origin=(0, 0))
-        h = 3.0 * k
-        topo = -8.1 if i == 0 else -8.1 - h - 1.1
-        if i == 0:
-            l1, h1 = centralizar_x(l, topo, h), h
-        else:
-            l2 = centralizar_x(l, -8.1 - h1 - 1.1, h)
-    vermelho = unary_union([arco, l1, l2])
+    (cxe, cye), re_ = SIMBOLO_EXTERNO
+    (cxi, cyi), ri = SIMBOLO_INTERNO
+    (cxm, cym), rm = SIMBOLO_MORDIDA
+    simbolo = Point(cxe, cye).buffer(re_, 512).intersection(
+        box(-re_ - 1, SIMBOLO_BASE, re_ + 1, cye + re_ + 1))
+    simbolo = simbolo.difference(Point(cxi, cyi).buffer(ri, 512))
+    simbolo = simbolo.difference(Point(cxm, cym).buffer(rm, 256))
+    ugt = encaixar(texto("UGT", 10.0), CAIXA_UGT)
+    l1 = encaixar(texto("UNIÃO GERAL DOS", 3.0), CAIXA_LINHA1).buffer(ENGROSSAR_TEXTO, 16)
+    l2 = encaixar(texto("TRABALHADORES", 3.0), CAIXA_LINHA2).buffer(ENGROSSAR_TEXTO, 16)
+    vermelho = unary_union([simbolo, l1, l2])
     return vermelho, ugt
 
 
