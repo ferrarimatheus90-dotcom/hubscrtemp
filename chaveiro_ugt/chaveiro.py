@@ -116,14 +116,14 @@ def frente():
     return vermelho, ugt
 
 
-def verso_qr(conteudo):
+def verso_qr(conteudo, espelhar=True):
     """Módulos do QR em branco direto sobre a base preta (como na arte do cliente).
 
     É o QR "invertido": os módulos que num QR comum seriam pretos saem brancos,
     e o preto da base faz o fundo e a margem. Feito no manifold (Clipper) porque
     módulos que se tocam só pela quina quebram a triangulação do shapely/trimesh.
-    Já sai espelhado em x: a face de baixo é vista virada, e assim o código lê
-    certo com a argola para cima.
+    espelhar=True para o QR na face de baixo (vista virada): assim lê certo com a
+    argola para cima. Na metade do verso o QR fica no topo da impressão: sem espelho.
     """
     qr = segno.make(conteudo, error="m", micro=False)
     M = np.array([list(r) for r in qr.matrix], dtype=bool)
@@ -136,7 +136,8 @@ def verso_qr(conteudo):
             if M[i, j]:
                 x = x0 + j * mod
                 y = y0 + QR_LADO - (i + 1) * mod
-                modulos.append(CrossSection.square((mod, mod)).translate((-x - mod, y)))
+                xm = -x - mod if espelhar else x
+                modulos.append(CrossSection.square((mod, mod)).translate((xm, y)))
     # 0,01 mm de sobra: módulos encostados só pela quina viram uma peça só
     branco = CrossSection.batch_boolean(modulos, OpType.Add).offset(0.005, JoinType.Miter)
     return branco, qr.version, n, mod
@@ -193,6 +194,43 @@ def montar(conteudo_qr):
                         rebaixo=rebaixo, versao=versao, n=n, mod=mod)
 
 
+BASE_METADE = 1.5      # cada metade: as duas coladas dão os 3 mm da base
+GABARITO_FOLGA = 0.2   # folga do encaixe no gabarito de colagem (por lado)
+GABARITO_PAREDE = 4.0
+GABARITO_ALTURA = 3.5
+
+
+def montar_metades(conteudo_qr):
+    """Versão em duas metades coladas costas com costas: relevo para fora nos dois lados.
+
+    Cada metade é impressa com o relevo para cima e a face de colar na mesa.
+    Frente: logo e nome em relevo. Verso: QR em relevo (sem espelho: é o topo da
+    impressão; ao virar a metade sobre a frente, girando pelo eixo vertical, ele
+    fica lido certo com a argola para cima).
+    """
+    cont, furo = contorno()
+    vermelho2d, ugt2d = frente()
+    qr_cs, versao, n, mod = verso_qr(conteudo_qr, espelhar=False)
+    R = DIAMETRO / 2
+    assert dentro(qr_cs, R - 1.0), "QR passa da borda"
+    cs_cont = secao(cont)
+    frente_ = {"preto": para_trimesh(extrudar(cs_cont, BASE_METADE)),
+               "vermelho": para_trimesh(extrudar(secao(vermelho2d), RELEVO, BASE_METADE)),
+               "branco": para_trimesh(extrudar(secao(ugt2d), RELEVO, BASE_METADE))}
+    verso_ = {"preto": para_trimesh(extrudar(cs_cont, BASE_METADE)),
+              "branco": para_trimesh(extrudar(qr_cs, RELEVO_QR, BASE_METADE))}
+    return {"frente": frente_, "verso": verso_}, dict(qr=qr_cs, versao=versao, n=n, mod=mod)
+
+
+def gabarito():
+    """Moldura sem fundo com o formato do chaveiro: alinha as metades na colagem."""
+    cont, _ = contorno()
+    silhueta = Polygon(cont.exterior)
+    cavidade = silhueta.buffer(GABARITO_FOLGA, 128)
+    externo = silhueta.buffer(GABARITO_FOLGA + GABARITO_PAREDE, 128)
+    return para_trimesh(extrudar(secao(externo.difference(cavidade)), GABARITO_ALTURA))
+
+
 FILAMENTO = {"preto": 1, "vermelho": 2, "branco": 3}   # slot do AMS de cada parte
 MESA_CENTRO = (128.0, 128.0)                            # centro da mesa 256 x 256 (cabe na A1 mini)
 
@@ -201,87 +239,93 @@ def _uuid(*chave):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "chaveiro-ugt/" + "/".join(map(str, chave))))
 
 
-def salvar_3mf(caminho, partes, nome_obj="Chaveiro UGT"):
+def salvar_3mf(caminho, objetos, titulo="Chaveiro UGT"):
     """3MF no formato de projeto do Bambu Studio / OrcaSlicer.
 
-    Um único objeto com uma parte por cor; cada parte já sai com o filamento
-    (slot do AMS) definido em Metadata/model_settings.config. As configurações
-    de impressora/filamento não vão no arquivo: valem as que estiverem abertas.
+    objetos = [(nome, {cor: malha}, (x, y) na mesa)]. Cada objeto tem uma parte por
+    cor, já no filamento (slot do AMS) certo via Metadata/model_settings.config.
+    As configurações de impressora/filamento não vão no arquivo: valem as abertas.
     """
-    nomes = list(partes)
-    tudo = trimesh.util.concatenate([partes[n] for n in nomes])
-    lo, hi = tudo.bounds
-    centro = np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2])
-    meia_altura = (hi[2] - lo[2]) / 2
     ns = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
           'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
           'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" '
           'requiredextensions="p"')
     cab = '<?xml version="1.0" encoding="UTF-8"?>\n'
     ident = "1 0 0 0 1 0 0 0 1 0 0 0"
-    obj_id = len(nomes) + 1
-
-    sub = []
-    for i, nome in enumerate(nomes, 1):
-        m = partes[nome]
-        v = m.vertices - centro
-        vs = "".join(f'<vertex x="{a:.4f}" y="{b:.4f}" z="{c:.4f}"/>' for a, b, c in v)
-        ts = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
-        sub.append(f'<object id="{i}" p:UUID="{_uuid("parte", i)}" type="model">'
-                   f"<mesh><vertices>{vs}</vertices><triangles>{ts}</triangles></mesh></object>")
-    objetos = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
-               '<metadata name="BambuStudio:3mfVersion">1</metadata>'
-               f'<resources>{"".join(sub)}</resources><build/></model>')
-
-    comps = "".join(f'<component p:path="/3D/Objects/object_1.model" objectid="{i}" '
-                    f'p:UUID="{_uuid("comp", i)}" transform="{ident}"/>'
-                    for i in range(1, len(nomes) + 1))
-    pos = f"1 0 0 0 1 0 0 0 1 {MESA_CENTRO[0]} {MESA_CENTRO[1]} {meia_altura:.4f}"
+    rel_tipo = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
+    arquivos, raiz_objs, itens, cfg_objs, instancias, montagem, rels = {}, [], [], [], [], [], []
+    pid = 0
+    proximo = sum(len(p) for _, p, _ in objetos) + 1  # ids dos objetos depois dos das partes
+    for k, (nome_obj, partes, (mx, my)) in enumerate(objetos, 1):
+        nomes = list(partes)
+        lo, hi = trimesh.util.concatenate([partes[n] for n in nomes]).bounds
+        centro = (lo + hi) / 2
+        meia_altura = (hi[2] - lo[2]) / 2
+        arq = f"3D/Objects/object_{k}.model"
+        sub, comps, partes_cfg = [], [], []
+        for n in nomes:
+            pid += 1
+            m = partes[n]
+            v = m.vertices - centro
+            vs = "".join(f'<vertex x="{a:.4f}" y="{b:.4f}" z="{c:.4f}"/>' for a, b, c in v)
+            ts = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
+            sub.append(f'<object id="{pid}" p:UUID="{_uuid("parte", pid)}" type="model">'
+                       f"<mesh><vertices>{vs}</vertices><triangles>{ts}</triangles></mesh></object>")
+            comps.append(f'<component p:path="/{arq}" objectid="{pid}" '
+                         f'p:UUID="{_uuid("comp", pid)}" transform="{ident}"/>')
+            partes_cfg.append(
+                f'<part id="{pid}" subtype="normal_part">'
+                f'<metadata key="name" value="{escape(CORES[n][0])}"/>'
+                '<metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>'
+                f'<metadata key="extruder" value="{FILAMENTO[n]}"/>'
+                '<mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" '
+                'facets_reversed="0" backwards_edges="0"/></part>')
+        arquivos[arq] = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
+                         '<metadata name="BambuStudio:3mfVersion">1</metadata>'
+                         f'<resources>{"".join(sub)}</resources><build/></model>')
+        rels.append(f'<Relationship Target="/{arq}" Id="rel-{k}" Type="{rel_tipo}"/>')
+        oid = proximo
+        proximo += 1
+        pos = f"1 0 0 0 1 0 0 0 1 {mx} {my} {meia_altura:.4f}"
+        raiz_objs.append(f'<object id="{oid}" p:UUID="{_uuid("objeto", k)}" type="model">'
+                         f'<components>{"".join(comps)}</components></object>')
+        itens.append(f'<item objectid="{oid}" p:UUID="{_uuid("item", k)}" transform="{pos}" '
+                     'printable="1"/>')
+        cfg_objs.append(f'<object id="{oid}"><metadata key="name" value="{escape(nome_obj)}"/>'
+                        f'<metadata key="extruder" value="{FILAMENTO[nomes[0]]}"/>'
+                        f'{"".join(partes_cfg)}</object>')
+        instancias.append(f'<model_instance><metadata key="object_id" value="{oid}"/>'
+                          '<metadata key="instance_id" value="0"/>'
+                          f'<metadata key="identify_id" value="{k}"/></model_instance>')
+        montagem.append(f'<assemble_item object_id="{oid}" instance_id="0" transform="{pos}" '
+                        'offset="0 0 0"/>')
     raiz = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
             '<metadata name="Application">BambuStudio-01.09.00.70</metadata>'
             '<metadata name="BambuStudio:3mfVersion">1</metadata>'
-            f'<metadata name="Title">{escape(nome_obj)}</metadata>'
+            f'<metadata name="Title">{escape(titulo)}</metadata>'
             '<metadata name="Designer">gerado por chaveiro.py</metadata>'
-            f'<resources><object id="{obj_id}" p:UUID="{_uuid("objeto")}" type="model">'
-            f"<components>{comps}</components></object></resources>"
-            f'<build p:UUID="{_uuid("build")}"><item objectid="{obj_id}" p:UUID="{_uuid("item")}" '
-            f'transform="{pos}" printable="1"/></build></model>')
-
-    partes_cfg = "".join(
-        f'<part id="{i}" subtype="normal_part">'
-        f'<metadata key="name" value="{escape(CORES[n][0])}"/>'
-        '<metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>'
-        f'<metadata key="extruder" value="{FILAMENTO[n]}"/>'
-        '<mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" '
-        'facets_reversed="0" backwards_edges="0"/></part>'
-        for i, n in enumerate(nomes, 1))
-    config = (f'{cab}<config><object id="{obj_id}">'
-              f'<metadata key="name" value="{escape(nome_obj)}"/>'
-              f'<metadata key="extruder" value="{FILAMENTO[nomes[0]]}"/>{partes_cfg}</object>'
+            f'<resources>{"".join(raiz_objs)}</resources>'
+            f'<build p:UUID="{_uuid("build")}">{"".join(itens)}</build></model>')
+    config = (f'{cab}<config>{"".join(cfg_objs)}'
               '<plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value=""/>'
-              '<metadata key="locked" value="false"/><model_instance>'
-              f'<metadata key="object_id" value="{obj_id}"/><metadata key="instance_id" value="0"/>'
-              '<metadata key="identify_id" value="1"/></model_instance></plate>'
-              f'<assemble><assemble_item object_id="{obj_id}" instance_id="0" transform="{pos}" '
-              'offset="0 0 0"/></assemble></config>')
-
+              f'<metadata key="locked" value="false"/>{"".join(instancias)}</plate>'
+              f'<assemble>{"".join(montagem)}</assemble></config>')
     tipos = (f'{cab}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
              '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
              '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
              '<Default Extension="config" ContentType="text/xml"/>'
              "</Types>")
-    rel_tipo = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
-    rels = (f'{cab}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            f'<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="{rel_tipo}"/></Relationships>')
+    rels_raiz = (f'{cab}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                 f'<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="{rel_tipo}"/></Relationships>')
     rels_modelo = (f'{cab}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-                   f'<Relationship Target="/3D/Objects/object_1.model" Id="rel-1" Type="{rel_tipo}"/>'
-                   "</Relationships>")
+                   f'{"".join(rels)}</Relationships>')
     with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", tipos)
-        z.writestr("_rels/.rels", rels)
+        z.writestr("_rels/.rels", rels_raiz)
         z.writestr("3D/3dmodel.model", raiz)
         z.writestr("3D/_rels/3dmodel.model.rels", rels_modelo)
-        z.writestr("3D/Objects/object_1.model", objetos)
+        for arq, xml in arquivos.items():
+            z.writestr(arq, xml)
         z.writestr("Metadata/model_settings.config", config)
 
 
@@ -336,7 +380,22 @@ def main():
     partes, geo = montar(args.qr)
     for nome, m in partes.items():
         assert m.is_watertight, f"{nome} não está fechado"
-    salvar_3mf(os.path.join(AQUI, "chaveiro_ugt.3mf"), partes)
+    cx, cy = MESA_CENTRO
+    salvar_3mf(os.path.join(AQUI, "chaveiro_ugt.3mf"), [("Chaveiro UGT", partes, (cx, cy))])
+    metades, geo_m = montar_metades(args.qr)
+    for lado, m in metades.items():
+        for nome, malha in m.items():
+            assert malha.is_watertight, f"metade {lado}/{nome} não está fechada"
+    salvar_3mf(os.path.join(AQUI, "chaveiro_ugt_metades.3mf"),
+               [("Metade frente", metades["frente"], (cx - 33, cy)),
+                ("Metade verso", metades["verso"], (cx + 33, cy))], "Chaveiro UGT - metades")
+    salvar_3mf(os.path.join(AQUI, "teste_peca_unica_e_metades.3mf"),
+               [("Peça única (QR no rebaixo)", partes, (cx - 66, cy)),
+                ("Metade frente", metades["frente"], (cx, cy)),
+                ("Metade verso", metades["verso"], (cx + 66, cy))], "Teste chaveiro UGT")
+    gab = gabarito()
+    assert gab.is_watertight
+    gab.export(os.path.join(AQUI, "gabarito_colagem.stl"))
     previa(geo, os.path.join(AQUI, "chaveiro_previa.png"), args.qr)
 
     print(f"QR: versão {geo['versao']} ({geo['n']}×{geo['n']} módulos de {geo['mod']:.2f} mm) -> {args.qr}")
@@ -346,6 +405,11 @@ def main():
         tot_v += v
         print(f"{CORES[nome][0]:28s} volume {v:5.2f} cm³  massa (sólida) {v * PLA_G_CM3:5.2f} g  "
               f"filamento 1,75 ≈ {m.volume / FILAMENTO_MM2 / 1000:5.2f} m")
+    for lado, m in metades.items():
+        v = sum(x.volume for x in m.values()) / 1000
+        print(f"Metade {lado:6s}: {v:.2f} cm³ ≈ {v * PLA_G_CM3:.1f} g  ("
+              + ", ".join(f"{n} {x.volume / 1000 * PLA_G_CM3:.2f} g" for n, x in m.items()) + ")")
+    print(f"Gabarito de colagem: {gab.volume / 1000 * PLA_G_CM3:.1f} g")
     b = trimesh.util.concatenate(list(partes.values())).bounds
     print(f"Total {tot_v:.2f} cm³ ≈ {tot_v * PLA_G_CM3:.1f} g · tamanho "
           f"{b[1][0] - b[0][0]:.1f} × {b[1][1] - b[0][1]:.1f} × {b[1][2] - b[0][2]:.1f} mm")
