@@ -7,7 +7,8 @@ Gera:
   chaveiro_previa.png  frente e verso
 
 Frente (topo): símbolo e nome em vermelho + UGT em branco, em alto-relevo.
-Verso (face na mesa): QR Code em branco direto sobre o preto, embutido rente à face.
+Verso (face na mesa): QR Code branco em relevo de 0,8 mm dentro de um rebaixo; o topo dos
+módulos e a borda preta ficam no mesmo nível, apoiados na mesa (peça única, sem cola).
 
 Uso: python3 chaveiro.py [--qr "https://..."]
 """
@@ -39,7 +40,9 @@ FONTE = FontProperties(fname="/usr/share/fonts/truetype/liberation/LiberationSan
 DIAMETRO = 50.0
 BASE = 3.0            # espessura da peça (disco)
 RELEVO = 0.8          # altura do relevo da frente
-INCRUSTE = 0.6        # profundidade do QR no verso (rente à face, 3 camadas de 0,2)
+RELEVO_QR = 0.8       # relevo do QR no verso = profundidade do rebaixo (4 camadas de 0,2)
+REBAIXO_MARGEM = 0.8  # folga do rebaixo em volta do QR
+REBAIXO_CANTO = 2.0   # raio dos cantos do rebaixo
 FURO = 4.5            # furo da argola
 ORELHA_R = 5.5        # raio da orelha do furo
 QR_LADO = 32.0        # lado do QR (só os módulos; a margem é o preto da base em volta)
@@ -169,18 +172,25 @@ def montar(conteudo_qr):
     vermelho2d, ugt2d = frente()
     qr_cs, versao, n, mod = verso_qr(conteudo_qr)
     R = DIAMETRO / 2
-    cs = {"contorno": secao(cont), "vermelho": secao(vermelho2d), "ugt": secao(ugt2d), "qr": qr_cs}
-    for nome in ("vermelho", "ugt", "qr"):
+    # rebaixo do verso: quadrado do QR + folga, cantos arredondados
+    lado = QR_LADO + 2 * REBAIXO_MARGEM
+    rebaixo = (CrossSection.square((lado, lado)).translate((-lado / 2, -lado / 2))
+               .offset(-REBAIXO_CANTO, JoinType.Miter).offset(REBAIXO_CANTO, JoinType.Round))
+    cs = {"contorno": secao(cont), "vermelho": secao(vermelho2d), "ugt": secao(ugt2d), "qr": qr_cs,
+          "rebaixo": rebaixo}
+    for nome in ("vermelho", "ugt", "qr", "rebaixo"):
         assert dentro(cs[nome], R - 1.0), f"{nome} passa da borda"
     for nome, g in (("vermelho", vermelho2d), ("UGT", ugt2d)):
         assert g.distance(furo) > 0.8, f"{nome} encosta no furo"
-    base = extrudar(cs["contorno"], BASE) - extrudar(cs["qr"], INCRUSTE)
+    # o preto perde o rebaixo inteiro; os módulos brancos ocupam parte dele (o resto é vão),
+    # então o fundo preto do rebaixo fica 0,8 mm acima da mesa, em ponte entre os módulos
+    base = extrudar(cs["contorno"], BASE) - extrudar(cs["rebaixo"], RELEVO_QR)
     vermelho = extrudar(cs["vermelho"], RELEVO, BASE)
-    branco = extrudar(cs["ugt"], RELEVO, BASE) + extrudar(cs["qr"], INCRUSTE)
+    branco = extrudar(cs["ugt"], RELEVO, BASE) + extrudar(cs["qr"], RELEVO_QR)
     partes = {"preto": para_trimesh(base), "vermelho": para_trimesh(vermelho),
               "branco": para_trimesh(branco)}
     return partes, dict(cont=cont, furo=furo, vermelho=vermelho2d, ugt=ugt2d, qr=qr_cs,
-                        versao=versao, n=n, mod=mod)
+                        rebaixo=rebaixo, versao=versao, n=n, mod=mod)
 
 
 FILAMENTO = {"preto": 1, "vermelho": 2, "branco": 3}   # slot do AMS de cada parte
@@ -291,6 +301,10 @@ def previa(geo, caminho, conteudo):
         for anel in cont.interiors:
             ax.fill(*anel.xy, color=fundo, lw=0)
         if verso:  # visto de trás: desfaz o espelhamento
+            fundo_rebaixo = [np.asarray(a) for a in geo["rebaixo"].to_polygons()]
+            ax.add_patch(PathPatch(Path.make_compound_path(
+                *[Path(np.vstack([a, a[:1]]), closed=True) for a in fundo_rebaixo]),
+                fc="#111111", ec="#3a3a3a", lw=0.8))
             aneis = [np.asarray(a) * [-1, 1] for a in geo["qr"].to_polygons()]
             caminho_qr = Path.make_compound_path(*[Path(np.vstack([a, a[:1]]), closed=True)
                                                   for a in aneis])
