@@ -46,7 +46,8 @@ REBAIXO_CANTO = 2.0   # raio dos cantos do rebaixo
 FURO = 4.5            # furo da argola
 ORELHA_R = 5.5        # raio da orelha do furo
 QR_LADO = 32.0        # lado do QR (só os módulos; a margem é o preto da base em volta)
-QR_PADRAO = "https://www.ugt.org.br/"
+QR_PADRAO = "https://www.ugt.org.br/COP-31"
+QR_CLIENTE = os.path.join(AQUI, "qr_cliente.txt")  # padrão exato do QR enviado pelo cliente
 
 CORES = {  # nome, cor de exibição (sRGB)
     "preto": ("Preto (base)", "#1E1E1E"),
@@ -116,6 +117,19 @@ def frente():
     return vermelho, ugt
 
 
+def matriz_qr(conteudo):
+    """Módulos do QR (True = escuro). Para o link do cliente usa o padrão exato do QR
+    que ele enviou (qr_cliente.txt); para outro link, gera com o segno."""
+    if os.path.exists(QR_CLIENTE):
+        linhas = open(QR_CLIENTE, encoding="utf-8").read().splitlines()
+        cab = linhas[0]
+        link = cab[cab.find("(") + 1:cab.find(")")]
+        if link == conteudo:
+            return np.array([[c == "1" for c in l] for l in linhas[1:] if l and not l.startswith("#")])
+    qr = segno.make(conteudo, error="m", micro=False)
+    return np.array([list(r) for r in qr.matrix], dtype=bool)
+
+
 def verso_qr(conteudo, espelhar=True):
     """Módulos do QR em branco direto sobre a base preta (como na arte do cliente).
 
@@ -125,8 +139,7 @@ def verso_qr(conteudo, espelhar=True):
     espelhar=True para o QR na face de baixo (vista virada): assim lê certo com a
     argola para cima. Na metade do verso o QR fica no topo da impressão: sem espelho.
     """
-    qr = segno.make(conteudo, error="m", micro=False)
-    M = np.array([list(r) for r in qr.matrix], dtype=bool)
+    M = matriz_qr(conteudo)
     n = M.shape[0]
     mod = QR_LADO / n
     x0 = y0 = -QR_LADO / 2
@@ -140,7 +153,7 @@ def verso_qr(conteudo, espelhar=True):
                 modulos.append(CrossSection.square((mod, mod)).translate((xm, y)))
     # 0,01 mm de sobra: módulos encostados só pela quina viram uma peça só
     branco = CrossSection.batch_boolean(modulos, OpType.Add).offset(0.005, JoinType.Miter)
-    return branco, qr.version, n, mod
+    return branco, (n - 17) // 4, n, mod
 
 
 # --------------------------------------------------------------------------- 3D

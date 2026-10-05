@@ -178,7 +178,7 @@ def main():
     ax.text(60, 118, "Imagem ilustrativa gerada do arquivo de impressão (chaveiro_ugt.3mf)",
             fontsize=10.5, color="#3a4654", family="DejaVu Sans", va="center")
     for x, t1, t2 in ((centros[0], "FRENTE", "logo e nome em alto-relevo (0,8 mm)"),
-                      (centros[1], "VERSO", "QR Code em relevo (0,8 mm) · ugt.org.br")):
+                      (centros[1], "VERSO", "QR em relevo · ugt.org.br/COP-31")):
         ax.text(x, base_pecas + 50, t1, fontsize=13, weight="bold", color=escuro, ha="center",
                 family="DejaVu Sans")
         ax.text(x, base_pecas + 90, t2, fontsize=10.5, color=escuro, ha="center",
