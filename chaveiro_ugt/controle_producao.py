@@ -22,6 +22,8 @@ MM = 72.0 / 25.4
 LARG, ALT = 210.0, 297.0
 MARGEM = 12.0
 LINHA = 7.2                      # altura da linha (espaço para escrever à mão)
+CAB_TABELA = 9.0                 # altura do cabeçalho da tabela
+RODAPE = MARGEM + 10             # a tabela não desce abaixo disto (rodapé da folha)
 VERMELHO = "#c8221c"
 CINZA_FORTE = "#d9d9d9"
 CINZA_LEVE = "#f0f0f0"
@@ -63,7 +65,7 @@ class Pagina:
 
 def cabecalho_tabela(p, y_topo):
     x = MARGEM
-    h = 9.0
+    h = CAB_TABELA
     p.ret(MARGEM, y_topo - h, LARG - 2 * MARGEM, h, fc=CINZA_FORTE, lw=0.35)
     for nome, w in COLUNAS:
         p.txt(x + w / 2, y_topo - h / 2, nome, h=2.4, peso="bold", ha="center", linespacing=1.0)
@@ -132,10 +134,11 @@ def gerar(meta=2000, por_mesa=21, extras=8, impressoras=1):
     caminho = os.path.join(AQUI, "controle_producao.pdf")
     paginas_png = []
     with PdfPages(caminho) as pdf:
-        # quantas linhas cabem: folha 1 tem o cabeçalho grande
-        y_tab_1 = 175.0
-        cap1 = int((y_tab_1 - 9 - (MARGEM + 10)) // LINHA)
-        capn = int((ALT - MARGEM - 9 - (MARGEM + 10)) // LINHA)
+        # quantas linhas cabem entre o cabeçalho da tabela e o rodapé
+        y_tab_1 = 175.0                  # folha 1: abaixo das instruções e da barra
+        y_tab_n = ALT - MARGEM - 9       # demais folhas: abaixo do título "continuação"
+        cap1 = int((y_tab_1 - CAB_TABELA - RODAPE) // LINHA)
+        capn = int((y_tab_n - CAB_TABELA - RODAPE) // LINHA)
         linhas = [("mesa", i) for i in range(mesas)] + [("titulo_extra", None)] + [("extra", None)] * extras
         folhas = []
         resto = linhas[:]
@@ -186,7 +189,7 @@ def gerar(meta=2000, por_mesa=21, extras=8, impressoras=1):
                 y = cabecalho_tabela(p, y_tab_1)
             else:
                 p.txt(MARGEM, ALT - MARGEM - 3, "CONTROLE DE PRODUÇÃO — Chaveiros UGT (continuação)", h=3.4, peso="bold")
-                y = cabecalho_tabela(p, ALT - MARGEM - 9)
+                y = cabecalho_tabela(p, y_tab_n)
             for tipo, i in conteudo:
                 if tipo == "mesa":
                     y = linha_mesa(p, y, i + 1, totais[i], marcos.get(i))
