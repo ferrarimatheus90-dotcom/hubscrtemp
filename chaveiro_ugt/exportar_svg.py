@@ -6,6 +6,9 @@ Gera:
                        (o rebaixo de cantos arredondados), na posição de leitura
   chaveiro_frente.svg  face de cima: contorno preto com o furo, símbolo e texto em
                        vermelho, UGT em branco; cada cor num grupo (id preto/vermelho/branco)
+  logo_ugt.svg         só a logo (símbolo, UGT e nome), fundo transparente, UGT em branco
+                       como no chaveiro (para fundo escuro)
+  logo_ugt_fundo_claro.svg  a mesma logo com o UGT em preto (para fundo branco)
 
 Uso: python3 exportar_svg.py [--qr "https://..."]
 """
@@ -72,6 +75,16 @@ def main():
     svg(os.path.join(AQUI, "chaveiro_frente.svg"), (bx0, -by1, bx1, -by0), corpo,
         "Chaveiro UGT - frente")
 
+    # logo sozinha: sem disco e sem furo, com 0,5 mm de respiro em volta
+    m = 0.5
+    lx0, ly0, lx1, ly1 = verm.union(ugt).bounds
+    limites = (lx0 - m, -ly1 - m, lx1 + m, -ly0 + m)
+    for nome, cor_ugt in (("logo_ugt.svg", branco), ("logo_ugt_fundo_claro.svg", preto)):
+        corpo = (f'<g id="vermelho"><path fill="{vermelho}" fill-rule="evenodd" d="{path_shapely(verm)}"/></g>\n'
+                 f'<g id="ugt"><path fill="{cor_ugt}" fill-rule="evenodd" d="{path_shapely(ugt)}"/></g>\n')
+        svg(os.path.join(AQUI, nome), limites, corpo, "Logo UGT")
+
+    print(f"Gerado: logo_ugt.svg e logo_ugt_fundo_claro.svg ({lx1 - lx0 + 2 * m:.1f} x {ly1 - ly0 + 2 * m:.1f} mm)")
     print(f"Gerado: qr_code.svg ({lado:g} x {lado:g} mm, QR {ch.QR_LADO:g} mm) e chaveiro_frente.svg "
           f"({bx1 - bx0:.1f} x {by1 - by0:.1f} mm)")
 
