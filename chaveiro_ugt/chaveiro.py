@@ -105,19 +105,23 @@ def encaixar(g, caixa):
     return affinity.translate(g, x0 - b[0], y0 - b[1])
 
 
-def frente():
-    """Relevo da frente: (vermelho, branco)."""
+def simbolo():
+    """Símbolo vermelho de cima (o arco), sem os textos."""
     (cxe, cye), re_ = SIMBOLO_EXTERNO
     (cxi, cyi), ri = SIMBOLO_INTERNO
     (cxm, cym), rm = SIMBOLO_MORDIDA
-    simbolo = Point(cxe, cye).buffer(re_, 512).intersection(
+    g = Point(cxe, cye).buffer(re_, 512).intersection(
         box(-re_ - 1, SIMBOLO_BASE, re_ + 1, cye + re_ + 1))
-    simbolo = simbolo.difference(Point(cxi, cyi).buffer(ri, 512))
-    simbolo = simbolo.difference(Point(cxm, cym).buffer(rm, 256))
+    g = g.difference(Point(cxi, cyi).buffer(ri, 512))
+    return g.difference(Point(cxm, cym).buffer(rm, 256))
+
+
+def frente():
+    """Relevo da frente: (vermelho, branco)."""
     ugt = encaixar(texto("UGT", 10.0), CAIXA_UGT)
     l1 = encaixar(texto("UNIÃO GERAL DOS", 3.0), CAIXA_LINHA1).buffer(ENGROSSAR_TEXTO, 16)
     l2 = encaixar(texto("TRABALHADORES", 3.0), CAIXA_LINHA2).buffer(ENGROSSAR_TEXTO, 16)
-    vermelho = unary_union([simbolo, l1, l2])
+    vermelho = unary_union([simbolo(), l1, l2])
     return vermelho, ugt
 
 

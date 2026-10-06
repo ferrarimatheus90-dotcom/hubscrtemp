@@ -9,6 +9,8 @@ Gera:
   logo_ugt.svg         só a logo (símbolo, UGT e nome), fundo transparente, UGT em branco
                        como no chaveiro (para fundo escuro)
   logo_ugt_fundo_claro.svg  a mesma logo com o UGT em preto (para fundo branco)
+  simbolo_ugt.svg      só o símbolo vermelho de cima (o arco), fundo transparente
+  qr_code_branco.svg   só os módulos brancos do QR (32 mm), fundo transparente
 
 Uso: python3 exportar_svg.py [--qr "https://..."]
 """
@@ -84,6 +86,18 @@ def main():
                  f'<g id="ugt"><path fill="{cor_ugt}" fill-rule="evenodd" d="{path_shapely(ugt)}"/></g>\n')
         svg(os.path.join(AQUI, nome), limites, corpo, "Logo UGT")
 
+    sim = ch.simbolo()
+    sx0, sy0, sx1, sy1 = sim.bounds
+    svg(os.path.join(AQUI, "simbolo_ugt.svg"), (sx0 - m, -sy1 - m, sx1 + m, -sy0 + m),
+        f'<path id="simbolo" fill="{vermelho}" fill-rule="evenodd" d="{path_shapely(sim)}"/>\n',
+        "Símbolo UGT")
+    q = ch.QR_LADO / 2
+    svg(os.path.join(AQUI, "qr_code_branco.svg"), (-q, -q, q, q),
+        f'<path id="modulos" fill="{branco}" fill-rule="evenodd" d="{path_secao(qr)}"/>\n',
+        f"QR Code UGT ({args.qr}) - só os módulos brancos")
+
+    print(f"Gerado: simbolo_ugt.svg ({sx1 - sx0 + 2 * m:.1f} x {sy1 - sy0 + 2 * m:.1f} mm) e "
+          f"qr_code_branco.svg ({ch.QR_LADO:g} x {ch.QR_LADO:g} mm)")
     print(f"Gerado: logo_ugt.svg e logo_ugt_fundo_claro.svg ({lx1 - lx0 + 2 * m:.1f} x {ly1 - ly0 + 2 * m:.1f} mm)")
     print(f"Gerado: qr_code.svg ({lado:g} x {lado:g} mm, QR {ch.QR_LADO:g} mm) e chaveiro_frente.svg "
           f"({bx1 - bx0:.1f} x {by1 - by0:.1f} mm)")
