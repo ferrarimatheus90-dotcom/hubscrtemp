@@ -177,13 +177,13 @@ def main():
             color=escuro, family="DejaVu Sans", va="center")
     ax.text(60, 118, "Imagem ilustrativa gerada do arquivo de impressão (chaveiro_ugt.3mf)",
             fontsize=10.5, color="#3a4654", family="DejaVu Sans", va="center")
-    for x, t1, t2 in ((centros[0], "FRENTE", "logo e nome em alto-relevo (0,8 mm)"),
+    for x, t1, t2 in ((centros[0], "FRENTE", f"logo e nome em alto-relevo ({ch.RELEVO:g} mm)".replace(".", ",")),
                       (centros[1], "VERSO", "QR em relevo · ugt.org.br/COP-31")):
         ax.text(x, base_pecas + 50, t1, fontsize=13, weight="bold", color=escuro, ha="center",
                 family="DejaVu Sans")
         ax.text(x, base_pecas + 90, t2, fontsize=10.5, color=escuro, ha="center",
                 family="DejaVu Sans")
-    ax.text(W - 60, H - 30, "Ø 50 mm · espessura 3,8 mm · PLA preto, vermelho e branco",
+    ax.text(W - 60, H - 30, f"Ø {ch.DIAMETRO:g} mm · espessura {ch.BASE + ch.RELEVO:g} mm · PLA preto, vermelho e branco".replace(".", ","),
             fontsize=9.5, color="#3a4654", ha="right", family="DejaVu Sans")
     fig.savefig(os.path.join(AQUI, "chaveiro_ilustracao.png"), dpi=200)
     print("Gerado: chaveiro_ilustracao.png")

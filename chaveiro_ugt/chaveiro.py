@@ -6,7 +6,9 @@ Gera:
                        já no seu filamento do AMS (1 preto, 2 vermelho, 3 branco)
   chaveiro_previa.png  frente e verso
 
-Frente (topo): símbolo e nome em vermelho + UGT em branco, em alto-relevo.
+Frente (topo): símbolo e nome em vermelho + UGT em branco, em alto-relevo de 1,2 mm.
+Passar a ferro (ironing) já vem por parte: só no topo do preto; as letras não, porque
+nelas o bico fica indo e voltando em área pequena e deixa o relevo áspero e "queimado".
 Verso (face na mesa): QR Code branco em relevo de 0,8 mm dentro de um rebaixo; o topo dos
 módulos e a borda preta ficam no mesmo nível, apoiados na mesa (peça única, sem cola).
 
@@ -39,7 +41,7 @@ FONTE = FontProperties(fname="/usr/share/fonts/truetype/liberation/LiberationSan
 # ---- medidas (mm)
 DIAMETRO = 50.0
 BASE = 3.0            # espessura da peça (disco)
-RELEVO = 0.8          # altura do relevo da frente
+RELEVO = 1.2          # altura do relevo da frente (6 camadas de 0,2)
 RELEVO_QR = 0.8       # relevo do QR no verso = profundidade do rebaixo (4 camadas de 0,2)
 REBAIXO_MARGEM = 0.8  # folga do rebaixo em volta do QR
 REBAIXO_CANTO = 2.0   # raio dos cantos do rebaixo
@@ -54,6 +56,8 @@ CORES = {  # nome, cor de exibição (sRGB)
     "vermelho": ("Vermelho (símbolo e texto)", "#D7261E"),
     "branco": ("Branco (UGT e QR Code)", "#F2F2F2"),
 }
+# passar a ferro por parte (valores do Bambu Studio: "no ironing", "top", "topmost", "solid")
+PASSAR_FERRO = {"preto": "top", "vermelho": "no ironing", "branco": "no ironing"}
 PLA_G_CM3 = 1.24
 FILAMENTO_MM2 = np.pi * (1.75 / 2) ** 2
 
@@ -291,6 +295,7 @@ def salvar_3mf(caminho, objetos, titulo="Chaveiro UGT"):
                 f'<metadata key="name" value="{escape(CORES[n][0])}"/>'
                 '<metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>'
                 f'<metadata key="extruder" value="{FILAMENTO[n]}"/>'
+                f'<metadata key="ironing_type" value="{PASSAR_FERRO[n]}"/>'
                 '<mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" '
                 'facets_reversed="0" backwards_edges="0"/></part>')
         arquivos[arq] = (f'{cab}<model unit="millimeter" xml:lang="en-US" {ns}>'
