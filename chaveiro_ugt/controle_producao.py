@@ -5,7 +5,7 @@ Cada linha é uma mesa já numerada, com o total acumulado impresso: quem tira a
 mesa da impressora só marca o X, anota dia, hora, impressora e defeitos.
 Na primeira folha há uma barra de 100 em 100 para pintar.
 
-Uso: python3 controle_producao.py [--meta 2000] [--por-mesa 21] [--extras 8]
+Uso: python3 controle_producao.py [--meta 2000] [--por-mesa 21] [--impressoras 1] [--extras 8]
 """
 import argparse
 import math
@@ -27,9 +27,12 @@ CINZA_FORTE = "#d9d9d9"
 CINZA_LEVE = "#f0f0f0"
 FONTE = "DejaVu Sans"
 
-# (título, largura em mm)
-COLUNAS = [("Mesa", 14), ("Feito", 15), ("Total de\nchaveiros", 25), ("Dia", 22), ("Hora", 20),
-           ("Impressora", 22), ("Defeito", 18), ("Quem fez", 50)]
+# (título, largura em mm) — com 2 impressoras; com 1, a coluna "Impressora" sai
+COLUNAS_2 = [("Mesa", 14), ("Feito", 15), ("Total de\nchaveiros", 25), ("Dia", 22), ("Hora", 20),
+             ("Impressora", 22), ("Defeito", 18), ("Quem fez", 50)]
+COLUNAS_1 = [("Mesa", 14), ("Feito", 15), ("Total de\nchaveiros", 25), ("Dia", 26), ("Hora", 24),
+             ("Defeito", 22), ("Quem fez", 60)]
+COLUNAS = COLUNAS_2
 
 
 def pt(mm_altura):
@@ -108,7 +111,9 @@ def rodape(p, folha, total_folhas, ultima_mesa_folha):
     p.txt(LARG - MARGEM, y, f"Folha {folha} de {total_folhas}", h=2.6, ha="right", cor="#444")
 
 
-def gerar(meta=2000, por_mesa=21, extras=8):
+def gerar(meta=2000, por_mesa=21, extras=8, impressoras=1):
+    global COLUNAS
+    COLUNAS = COLUNAS_1 if impressoras == 1 else COLUNAS_2
     mesas = math.ceil(meta / por_mesa)
     totais = [min(meta, por_mesa * (i + 1)) for i in range(mesas)]
     # marcos: a cada 100 (pintar a barra); 500, 1000, 1500 e a meta em destaque
@@ -146,14 +151,17 @@ def gerar(meta=2000, por_mesa=21, extras=8):
                 p.txt(MARGEM, y - 13, "Chaveiros UGT", h=4.6, peso="bold", cor=VERMELHO)
                 p.txt(LARG - MARGEM, y - 13, f"Meta: {meta:,} chaveiros".replace(",", "."), h=4.0,
                       peso="bold", ha="right")
-                p.txt(LARG - MARGEM, y - 21, f"{por_mesa} por mesa · {mesas} mesas", h=3.0, ha="right", cor="#444")
-                p.txt(MARGEM, y - 21, "Início: ____/____/______        Entrega: ____/____/______", h=3.0)
+                maq = "1 impressora" if impressoras == 1 else f"{impressoras} impressoras"
+                p.txt(LARG - MARGEM, y - 21, f"{por_mesa} por mesa · {mesas} mesas · {maq}", h=2.6, ha="right",
+                      cor="#444")
+                p.txt(MARGEM, y - 21, "Início: ____/____/______    Entrega: ____/____/______", h=2.8)
                 # instruções
                 y0 = y - 27
                 p.ret(MARGEM, y0 - 49, LARG - 2 * MARGEM, 49, fc="none", lw=0.5)
                 p.txt(MARGEM + 4, y0 - 5, "COMO PREENCHER", h=3.4, peso="bold", cor=VERMELHO)
                 passos = [
                     "Tirou uma mesa pronta da impressora? Marque um X no quadrado da próxima mesa.",
+                    "Escreva o dia e a hora." if impressoras == 1 else
                     "Escreva o dia, a hora e faça um círculo na impressora (1 ou 2).",
                     "Se alguma peça saiu com defeito, escreva quantas na coluna Defeito.",
                     "O número em Total mostra quantos chaveiros já foram feitos até aquela mesa.",
@@ -213,8 +221,9 @@ def main():
     ap.add_argument("--meta", type=int, default=2000)
     ap.add_argument("--por-mesa", type=int, default=21)
     ap.add_argument("--extras", type=int, default=8)
+    ap.add_argument("--impressoras", type=int, default=1, choices=(1, 2))
     a = ap.parse_args()
-    caminho, pngs, mesas, folhas = gerar(a.meta, a.por_mesa, a.extras)
+    caminho, pngs, mesas, folhas = gerar(a.meta, a.por_mesa, a.extras, a.impressoras)
     print(f"Gerado: {os.path.basename(caminho)} — {mesas} mesas em {folhas} folhas A4")
 
 
