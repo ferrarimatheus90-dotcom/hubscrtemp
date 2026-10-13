@@ -27,6 +27,13 @@ from matplotlib import ft2font
 
 OUT_DIR = Path(__file__).resolve().parent
 
+import argparse
+_ap = argparse.ArgumentParser(description="Gera o 3MF da tag NFC pet")
+_ap.add_argument("--texto", default="APROXIME O CELULAR", help="texto do arco inferior")
+_ap.add_argument("--fonte", type=float, default=3.2, help="tamanho da fonte (em mm, ~altura x 0,73 = maiuscula)")
+_ap.add_argument("--sufixo", default="", help="sufixo dos arquivos gerados, ex.: _emergencia")
+ARGS = _ap.parse_args()
+
 # ---------------- parametros (mm) ----------------
 R_DISCO = 15.0          # 30 mm de diametro
 ESPESSURA = 4.0         # altura total do corpo
@@ -100,8 +107,8 @@ for r in (2.4, 3.8, 5.2):
 nfc = unary_union(nfc)
 
 # texto em arco na parte de baixo
-TEXTO = "APROXIME O CELULAR"
-TAM_FONTE = 3.2        # em; altura das maiusculas ~2,3 mm
+TEXTO = ARGS.texto
+TAM_FONTE = ARGS.fonte   # em; altura das maiusculas ~0,73 x fonte
 ESPACO = 0.25
 R_BASE = 12.4          # raio da linha de base (pes das letras para fora)
 fp = FontProperties(family="DejaVu Sans", weight="bold")
@@ -168,7 +175,7 @@ modelo = (
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<model unit="millimeter" xml:lang="en-US" '
     'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n'
-    '<metadata name="Title">Tag NFC Pet - Aproxime o celular</metadata>\n'
+    f'<metadata name="Title">Tag NFC Pet - {TEXTO}</metadata>\n'
     '<metadata name="Application">gerar_tag_nfc.py</metadata>\n'
     '<resources>\n'
     f'<object id="1" name="Corpo (preto)" type="model">{mesh_xml(corpo)}</object>\n'
@@ -211,7 +218,7 @@ pausa = (
     '</custom_gcodes_per_layer>\n'
 )
 
-saida = OUT_DIR / "tag_nfc_pet_30mm.3mf"
+saida = OUT_DIR / f"tag_nfc_pet_30mm{ARGS.sufixo}.3mf"
 with zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as z:
     z.writestr("[Content_Types].xml", content_types)
     z.writestr("_rels/.rels", rels)
@@ -220,7 +227,7 @@ with zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as z:
 
 # STL de apoio (corpo + relevo unidos) para fatiadores que ignoram o 3MF
 unido = trimesh.boolean.union([corpo, relevo], engine="manifold")
-unido.export(OUT_DIR / "tag_nfc_pet_30mm_unico.stl")
+unido.export(OUT_DIR / f"tag_nfc_pet_30mm{ARGS.sufixo}_unico.stl")
 
 # ---------------- preview ----------------
 import matplotlib
@@ -247,7 +254,7 @@ ax1 = fig.add_subplot(1, 3, 1)
 ax1.add_patch(patch(contorno, facecolor="#222", edgecolor="none"))
 ax1.add_patch(patch(relevo_2d, facecolor="white", edgecolor="none"))
 ax1.plot(*Point(0, 0).buffer(R_CAVIDADE).exterior.xy, "--", color="#e33", lw=1,
-         label="cavidade da tag (26 mm)")
+         label=f"cavidade da tag ({2*R_CAVIDADE:.1f} mm)")
 ax1.set_xlim(-17, 17); ax1.set_ylim(-17, 24)
 ax1.set_aspect("equal"); ax1.set_title("Vista superior (mm)"); ax1.legend(loc="upper right")
 ax1.grid(alpha=.3)
@@ -268,12 +275,13 @@ for m, cor in [(corpo, "#2a2a2a"), (relevo, "#f2f2f2")]:
     tri = m.vertices[m.faces]
     pc = Poly3DCollection(tri, facecolors=cor, linewidths=0, shade=True,
                           lightsource=matplotlib.colors.LightSource(azdeg=315, altdeg=55))
+    pc.set_zorder(10 if m is relevo else 1)
     ax3.add_collection3d(pc)
 ax3.set_xlim(-18, 18); ax3.set_ylim(-18, 24); ax3.set_zlim(-15, 20)
 ax3.set_box_aspect((36, 42, 35)); ax3.view_init(elev=55, azim=-60)
 ax3.set_axis_off(); ax3.set_title("Vista 3D")
 plt.tight_layout()
-plt.savefig(OUT_DIR / "preview.png", dpi=130)
+plt.savefig(OUT_DIR / f"preview{ARGS.sufixo}.png", dpi=130)
 
 b = contorno.bounds
 print(f"Contorno: {b[2]-b[0]:.1f} x {b[3]-b[1]:.1f} mm, altura total {ESPESSURA+ALTURA_RELEVO:.1f} mm")
