@@ -67,8 +67,9 @@ def elipse(cx, cy, rx, ry, ang=0.0):
     e = affinity.rotate(e, ang, origin=(0, 0))
     return affinity.translate(e, cx, cy)
 
-# anel da borda, interrompido no setor da alca (nao passa sobre o furo da argola)
-ANG_CORTE = 35.0   # meio-angulo do setor removido, em graus, em torno de 90 graus
+# anel da borda (opcional; desligado: relevo so com texto, pata e simbolo NFC)
+COM_BORDA = False
+ANG_CORTE = 35.0   # meio-angulo do setor removido sobre a alca, em graus
 borda = Point(0, 0).buffer(R_DISCO, resolution=96).difference(
     Point(0, 0).buffer(13.3, resolution=96))
 setor_alca = Polygon([(0, 0)] + [
@@ -145,7 +146,7 @@ for ch, adv in zip(TEXTO, avancos):
     ang += (adv + ESPACO) / R_BASE
 texto = unary_union(letras)
 
-relevo_2d = unary_union([borda, pata, nfc, texto]).buffer(0)
+relevo_2d = unary_union(([borda] if COM_BORDA else []) + [pata, nfc, texto]).buffer(0)
 # limpa vertices quase coincidentes das fontes (evitam triangulos degenerados)
 relevo_2d = shapely.set_precision(relevo_2d.simplify(0.01, preserve_topology=True), 0.001).buffer(0)
 pecas = relevo_2d.geoms if hasattr(relevo_2d, "geoms") else [relevo_2d]
