@@ -30,8 +30,8 @@ OUT_DIR = Path(__file__).resolve().parent
 # ---------------- parametros (mm) ----------------
 R_DISCO = 15.0          # 30 mm de diametro
 ESPESSURA = 4.0         # altura total do corpo
-R_CAVIDADE = 13.0       # 26 mm (tag de 25 mm + folga)
-CAV_Z0, CAV_Z1 = 2.0, 3.0   # cavidade: 1,0 mm de altura
+R_CAVIDADE = 12.7       # 25,4 mm: tag de 25 mm + 0,2 mm por lado (furo FDM encolhe ~0,1-0,2 mm)
+CAV_Z0, CAV_Z1 = 2.0, 2.6   # cavidade: 0,6 mm (3 camadas) para tag adesiva de ~0,3 mm
 ALTURA_RELEVO = 0.6
 ALTURA_CAMADA = 0.2
 Z_PAUSA = CAV_Z1 + ALTURA_CAMADA   # pausa antes da camada que fecha a cavidade
