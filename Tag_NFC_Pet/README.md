@@ -21,7 +21,7 @@ para uma tag NFC redonda de 25 mm e pausa de impressão para inserir a tag.
 | Espessura do corpo | 4,0 mm (4,6 mm com relevo) |
 | Cavidade da tag | Ø 26 mm × 1,0 mm, de z = 2,0 a z = 3,0 mm |
 | Furo da argola | triângulo arredondado, ~8 × 6 mm |
-| Relevo (borda, NFC, pata, texto) | 0,6 mm de altura |
+| Relevo (borda, NFC, pata, texto) | 0,6 mm de altura; o anel da borda é interrompido no setor da alça (70°) |
 
 A cavidade aceita tags NFC adesivas de 25 mm (0,3 mm) e também tags "moeda" de até 1 mm.
 

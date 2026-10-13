@@ -67,9 +67,14 @@ def elipse(cx, cy, rx, ry, ang=0.0):
     e = affinity.rotate(e, ang, origin=(0, 0))
     return affinity.translate(e, cx, cy)
 
-# anel da borda
+# anel da borda, interrompido no setor da alca (nao passa sobre o furo da argola)
+ANG_CORTE = 35.0   # meio-angulo do setor removido, em graus, em torno de 90 graus
 borda = Point(0, 0).buffer(R_DISCO, resolution=96).difference(
     Point(0, 0).buffer(13.3, resolution=96))
+setor_alca = Polygon([(0, 0)] + [
+    (25 * math.cos(math.radians(a)), 25 * math.sin(math.radians(a)))
+    for a in np.linspace(90 - ANG_CORTE, 90 + ANG_CORTE, 30)])
+borda = borda.difference(setor_alca)
 
 # pata
 pata = [elipse(0, -5.2, 2.8, 2.3)]
