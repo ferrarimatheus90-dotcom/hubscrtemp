@@ -8,9 +8,9 @@ para uma tag NFC redonda de 25 mm e pausa de impressão para inserir a tag.
 | Arquivo | Uso |
 |---|---|
 | `tag_nfc_pet_30mm.3mf` | Arquivo principal, texto "APROXIME O CELULAR". Um objeto com duas partes: **Corpo (preto)** e **Relevo (branco)**. Inclui a pausa na camada. |
-| `tag_nfc_pet_30mm_emergencia.3mf` | Mesma peça com o texto "EMERGÊNCIA" (fonte maior). |
+| `tag_nfc_pet_30mm_emergencia.3mf` | Mesma peça com o texto "EMERGÊNCIA" grande, sem a pata, símbolo NFC centralizado. |
 | `tag_nfc_pet_30mm_unico.stl`, `..._emergencia_unico.stl` | Corpo + relevo unidos numa única malha (para fatiadores que não leem 3MF). |
-| `gerar_tag_nfc.py` | Script que gera os arquivos (parâmetros no topo; texto via `--texto`, `--fonte`, `--sufixo`). |
+| `gerar_tag_nfc.py` | Script que gera os arquivos (parâmetros no topo; opções `--texto`, `--fonte`, `--sufixo`, `--sem-pata`). |
 | `preview.png`, `preview_emergencia.png` | Vista superior, corte e vista 3D. |
 
 ## Dimensões
@@ -56,7 +56,7 @@ mas para melhor definição use bico de 0,2 mm ou aumente `TAM_FONTE` no script.
 ```bash
 pip install trimesh shapely manifold3d mapbox_earcut matplotlib numpy scipy networkx
 python3 gerar_tag_nfc.py
-python3 gerar_tag_nfc.py --texto "EMERGÊNCIA" --fonte 3.8 --sufixo _emergencia
+python3 gerar_tag_nfc.py --texto "EMERGÊNCIA" --fonte 4.8 --sufixo _emergencia --sem-pata
 # outro texto qualquer:
 python3 gerar_tag_nfc.py --texto "ME LEVE PRA CASA" --fonte 3.2 --sufixo _casa
 ```

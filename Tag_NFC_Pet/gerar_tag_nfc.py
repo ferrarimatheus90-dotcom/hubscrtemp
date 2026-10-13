@@ -32,6 +32,7 @@ _ap = argparse.ArgumentParser(description="Gera o 3MF da tag NFC pet")
 _ap.add_argument("--texto", default="APROXIME O CELULAR", help="texto do arco inferior")
 _ap.add_argument("--fonte", type=float, default=3.2, help="tamanho da fonte (em mm, ~altura x 0,73 = maiuscula)")
 _ap.add_argument("--sufixo", default="", help="sufixo dos arquivos gerados, ex.: _emergencia")
+_ap.add_argument("--sem-pata", action="store_true", help="remove a pata e centraliza o simbolo NFC")
 ARGS = _ap.parse_args()
 
 # ---------------- parametros (mm) ----------------
@@ -100,7 +101,7 @@ def arco(cx, cy, r, largura, a0, a1):
                for a in np.linspace(a1, a0, 40)]
     return Polygon(pts_ext + pts_int).buffer(0.001)
 
-nfc_cx, nfc_cy = -4.0, 7.3
+nfc_cx, nfc_cy = (-2.8, 5.0) if ARGS.sem_pata else (-4.0, 7.3)
 nfc = [Point(nfc_cx, nfc_cy).buffer(0.9, resolution=32)]
 for r in (2.4, 3.8, 5.2):
     nfc.append(arco(nfc_cx, nfc_cy, r, 0.85, -48, 48))
@@ -153,7 +154,7 @@ for ch, adv in zip(TEXTO, avancos):
     ang += (adv + ESPACO) / R_BASE
 texto = unary_union(letras)
 
-relevo_2d = unary_union(([borda] if COM_BORDA else []) + [pata, nfc, texto]).buffer(0)
+relevo_2d = unary_union(([borda] if COM_BORDA else []) + ([] if ARGS.sem_pata else [pata]) + [nfc, texto]).buffer(0)
 # limpa vertices quase coincidentes das fontes (evitam triangulos degenerados)
 relevo_2d = shapely.set_precision(relevo_2d.simplify(0.01, preserve_topology=True), 0.001).buffer(0)
 pecas = relevo_2d.geoms if hasattr(relevo_2d, "geoms") else [relevo_2d]
